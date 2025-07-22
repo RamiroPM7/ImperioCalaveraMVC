@@ -1,0 +1,81 @@
+﻿@model ImperioCalaveraMVC.Models.ViewModels.LoginViewModel // Asegúrate de que el namespace sea correcto para tu ViewModel
+
+@{
+    ViewData["Title"] = "Iniciar Sesión";
+    Layout = null; // ¡CRÍTICO! Esto le dice a esta vista que no use ningún layout.
+}
+
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@ViewData["Title"] - Imperio Calavera MVC</title>
+
+    @* Incluye tus estilos CSS directamente aquí *@
+    <link href="~/output.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        /* Puedes añadir más estilos personalizados aquí si es necesario */
+    </style>
+</head>
+<body class="bg-gray-100">
+
+    <div class="w-screen h-screen flex items-center justify-center bg-gray-100 font-inter p-4 sm:p-6 lg:p-8">
+        <div class="bg-white p-8 rounded-xl shadow-lg w-full max-w-md border border-gray-200 sm:p-10">
+
+            <h2 class="text-3xl font-bold text-center text-gray-800 mb-2">Iniciar Sesión</h2>
+            <p class="text-center text-gray-600 mb-8">Ingresa con tu cuenta</p>
+
+            @* Muestra todos los errores de validación del modelo (incluidos los de Identity) *@
+            <div asp-validation-summary="All" class="text-red-600 text-sm mb-4"></div>
+
+            <form asp-controller="Auth" asp-action="Login" method="post">
+                @Html.AntiForgeryToken()
+
+                <input type="hidden" asp-for="ReturnUrl" value="@ViewData["ReturnUrl"]" />
+
+                <div class="mb-6">
+                    <label asp-for="Email" class="block text-gray-700 text-sm font-medium mb-2"></label>
+                    <input asp-for="Email" class="shadow-sm appearance-none border border-gray-300 rounded-lg w-full py-3 px-4 text-gray-700 leading-tight focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition duration-200" placeholder="tu@ejemplo.com" />
+                    <span asp-validation-for="Email" class="text-red-600 text-xs mt-1"></span>
+                </div>
+
+                <div class="mb-6">
+                    <label asp-for="Password" class="block text-gray-700 text-sm font-medium mb-2"></label>
+                    <input asp-for="Password" class="shadow-sm appearance-none border border-gray-300 rounded-lg w-full py-3 px-4 text-gray-700 mb-3 leading-tight focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition duration-200" placeholder="********" />
+                    <span asp-validation-for="Password" class="text-red-600 text-xs mt-1"></span>
+                </div>
+
+                <div class="mb-6 flex items-center">
+                    <input asp-for="RememberMe" type="checkbox" class="form-checkbox h-4 w-4 text-blue-600 rounded" />
+                    <label asp-for="RememberMe" class="ml-2 text-gray-700 text-sm font-medium"></label>
+                </div>
+
+                <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-4 rounded-lg focus:outline-none focus:shadow-outline transition duration-300 transform hover:scale-105 shadow-md">
+                    Entrar
+                </button>
+            </form>
+
+            <div class="mt-6 text-center text-sm">
+                <a href="#" class="font-medium text-blue-600 hover:text-blue-800 transition duration-200">
+                    ¿Olvidaste tu contraseña?
+                </a>
+                <p class="mt-2 text-gray-600">
+                    ¿No tienes una cuenta?
+                    <a href="/Auth/Register" class="font-medium text-blue-600 hover:text-blue-800 transition duration-200">
+                        Regístrate
+                    </a>
+                </p>
+            </div>
+        </div>
+    </div>
+
+    @* Incluye tus scripts JavaScript directamente aquí al final del body *@
+    <script src="~/lib/jquery/dist/jquery.min.js"></script>
+    <script src="~/lib/jquery-validation/dist/jquery.validate.min.js"></script>
+    <script src="~/lib/jquery-validation-unobtrusive/jquery.validate.unobtrusive.min.js"></script>
+    @* Si tienes otros scripts específicos de esta página, ponlos aquí *@
+</body>
+</html>

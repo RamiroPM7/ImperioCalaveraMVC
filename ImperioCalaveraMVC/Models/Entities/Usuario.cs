@@ -17,15 +17,8 @@ public class Usuario : IdentityUser
     [Required, MaxLength(100)]
     public  required string Nombre { get; set; }
 
-    public required bool Eliminado { get; set; } = false;
-
     [Required, MaxLength(20)]
-    
     public required string TelefonoEmergencia { get; set; }
-
-    public required Role Rol { get; set; } = Role.Cliente;
-
-   
 
     public ICollection<Cita> CitasComoCliente { get; set; }
     public ICollection<Cita> CitasComoBarbero { get; set; }

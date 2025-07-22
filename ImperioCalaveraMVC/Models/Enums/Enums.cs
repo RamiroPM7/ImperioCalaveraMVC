@@ -2,12 +2,7 @@
 {
     public class Enums
     {
-        public enum Role
-        {
-            Cliente = 0,
-            Barbero = 1,
-            Admin = 2
-        }
+        
 
         public enum EstadoCita
         {
