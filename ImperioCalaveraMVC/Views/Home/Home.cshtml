@@ -1,8 +1,127 @@
 ﻿@{
-    ViewData["Title"] = "Home Page";
+    ViewData["Title"] = "Inicio";
+    Layout = "_Layout"; // Asegúrate de que esta vista use tu _Layout.cshtml
 }
 
-<div class="text-center">
-    <h1 class="display-4">Welcome</h1>
-    <p>Learn about <a href="https://learn.microsoft.com/aspnet/core">building Web apps with ASP.NET Core</a>.</p>
-</div>
+@* Inyección de SignInManager y UserManager para lógica condicional *@
+@using Microsoft.AspNetCore.Identity
+@inject SignInManager<Usuario> SignInManager
+@inject UserManager<Usuario> UserManager
+
+
+<!DOCTYPE html>
+    <html>
+    <head>
+       
+    </head>
+    <body>
+
+    @* Contenedor para las Tarjetas *@
+    <div class="py-5">
+        @{
+            var currentUser = await UserManager.GetUserAsync(User);
+        }
+
+        <h1 class="text-center mb-5 fw-bold text-dark">Bienvenido @currentUser.Nombre</h1>
+
+        <div class="row g-4 justify-content-center">
+
+            @* Card: Generar Cita (para Barbero y Cliente) *@
+            @if (SignInManager.IsSignedIn(User))
+            {
+                <div class="col-12 col-md-6 col-lg-4">
+                    <div class="card h-100 shadow-lg border-0 rounded-4 p-4 text-center">
+                        <div class="card-body d-flex flex-column justify-content-between">
+                            <div class="mb-4">
+                                <i class="fas fa-calendar-plus fa-3x text-primary mb-3"></i>
+                                <h5 class="card-title fw-bold text-dark">Generar Cita</h5>
+                                <p class="card-text text-muted">
+                                    @if (User.IsInRole("Admin"))
+                                    {
+                                        <span>Tú eres el Admin.</span>
+                                    }
+                                    else
+                                    {
+                                        <span>Reserva tu próxima cita con tu barbero favorito.</span>
+                                    }
+                                </p>
+                            </div>
+                            <a asp-controller="Citas" asp-action="Create" class="btn btn-primary mt-auto">
+                                @if (User.IsInRole("Barbero"))
+                                {
+                                    <span>Nueva Cita</span>
+                                }
+                                else
+                                {
+                                    <span>Reservar Ahora</span>
+                                }
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            }
+
+            @* Card: Agregar Usuario (Solo para Admin) *@
+            @if (User.IsInRole("Admin"))
+            {
+                <div class="col-12 col-md-6 col-lg-4">
+                    <div class="card h-100 shadow-lg border-0 rounded-4 p-4 text-center">
+                        <div class="card-body d-flex flex-column justify-content-between">
+                            <div class="mb-4">
+                                <i class="fas fa-user-plus fa-3x text-success mb-3"></i>
+                                <h5 class="card-title fw-bold text-dark">Agregar Usuario</h5>
+                                <p class="card-text text-muted">Crea nuevas cuentas de usuario, incluyendo clientes y barberos.</p>
+                            </div>
+                            <a asp-controller="Admin" asp-action="CreateUser" class="btn btn-success mt-auto">
+                                Agregar Usuario
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            }
+
+            @* Card: Bloquear Usuario (Solo para Admin) *@
+            @if (User.IsInRole("Admin"))
+            {
+                <div class="col-12 col-md-6 col-lg-4">
+                    <div class="card h-100 shadow-lg border-0 rounded-4 p-4 text-center">
+                        <div class="card-body d-flex flex-column justify-content-between">
+                            <div class="mb-4">
+                                <i class="fas fa-user-lock fa-3x text-danger mb-3"></i>
+                                <h5 class="card-title fw-bold text-dark">Bloquear Usuario</h5>
+                                <p class="card-text text-muted">Deshabilita o reactiva el acceso de usuarios al sistema.</p>
+                            </div>
+                            <a asp-controller="Admin" asp-action="ManageUsers" class="btn btn-danger mt-auto">
+                                Gestionar Usuarios
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            }
+
+            @* Card: Agregar Servicio/Producto (Solo para Admin) *@
+            @if (User.IsInRole("Admin"))
+            {
+                <div class="col-12 col-md-6 col-lg-4">
+                    <div class="card h-100 shadow-lg border-0 rounded-4 p-4 text-center">
+                        <div class="card-body d-flex flex-column justify-content-between">
+                            <div class="mb-4">
+                                <i class="fas fa-plus-circle fa-3x text-info mb-3"></i>
+                                <h5 class="card-title fw-bold text-dark">Agregar Servicio/Producto</h5>
+                                <p class="card-text text-muted">Añade o edita los servicios y productos ofrecidos por la barbería.</p>
+                            </div>
+                            <a asp-controller="Servicios" asp-action="Create" class="btn btn-info mt-auto">
+                                Agregar
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            }
+
+        </div>
+    </div>
+
+    
+    
+    </body>
+    </html>

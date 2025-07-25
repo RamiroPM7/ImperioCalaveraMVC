@@ -91,11 +91,27 @@ namespace ImperioCalaveraMVC.Controllers
 
                 if (result.Succeeded)
                 {
-                    // Opcional: Asigna un rol al usuario recién registrado.
-                     //await _userManager.AddToRoleAsync(user, "Cliente"); // Si usas roles de Identity
+                    // Define el nombre del rol por defecto
+                    const string defaultRole = "Admin";
 
-                    // Opcional: Iniciar sesión al usuario automáticamente después del registro
-                    // await _signInManager.SignInAsync(user, isPersistent: false);
+                    // Verifica si el rol "Cliente" existe. Si no existe, lo crea.
+                    if (!await _roleManager.RoleExistsAsync(defaultRole))
+                    {
+                        await _roleManager.CreateAsync(new IdentityRole(defaultRole));
+                    }
+
+                    // Asigna el rol "Cliente" al usuario recién registrado
+                    var roleAssignmentResult = await _userManager.AddToRoleAsync(user, defaultRole);
+
+                    if (!roleAssignmentResult.Succeeded)
+                    {
+                        // Si la asignación del rol falla, puedes loggear el error o añadirlo al ModelState
+                        foreach (var error in roleAssignmentResult.Errors)
+                        {
+                            ModelState.AddModelError(string.Empty, $"Error al asignar rol: {error.Description}");
+                        }
+                        
+                    }
 
                     // Redirige al usuario a una página de confirmación o al login
                     TempData["SuccessMessage"] = "¡Registro exitoso! Ahora puedes iniciar sesión.";
@@ -112,6 +128,22 @@ namespace ImperioCalaveraMVC.Controllers
             // Si el ModelState no es válido o hubo errores de Identity,
             // vuelve a mostrar la vista de registro con los errores.
             return View(model);
+        }
+
+
+        [HttpPost]
+        [ValidateAntiForgeryToken] // ¡CRÍTICO! Protege contra ataques CSRF.
+        public async Task<IActionResult> Logout()
+        {
+            // Cierra la sesión del usuario actual.
+            // Esto elimina la cookie de autenticación del navegador.
+            await _signInManager.SignOutAsync();
+
+            // Redirige al usuario a la página de inicio (o a la de login si lo prefieres).
+            // "Index" es la acción, "Home" es el controlador.
+            return RedirectToAction("Index", "Auth");
+            // O si quieres redirigir al login:
+            // return RedirectToAction("Login", "Auth");
         }
 
     }
