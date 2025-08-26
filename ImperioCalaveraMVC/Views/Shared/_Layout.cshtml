@@ -51,28 +51,34 @@
                                 <a class="nav-link text-white @(currentController == "Home" && currentAction == "Home" ? "active" : "")" asp-controller="Home" asp-action="Home">Inicio</a>
                             </li>
                             <li class="nav-item">
-                                <a class="nav-link text-white @(currentController == "Citas" ? "active" : "")" asp-controller="Citas" asp-action="Index">Citas</a>
+                                    <a class="nav-link text-white @(currentController == "Citas" ? "active" : "")" asp-controller="Appointments" asp-action="Appointment">Citas</a>
                             </li>
+                           <!--
+                           
                             <li class="nav-item">
                                 <a class="nav-link text-white @(currentController == "Servicios" ? "active" : "")" asp-controller="Servicios" asp-action="Index">Servicios</a>
                             </li>
+                                 
                             <li class="nav-item">
                                 <a class="nav-link text-white @(currentController == "Contacto" ? "active" : "")" asp-controller="Contacto" asp-action="Index">Contacto</a>
                             </li>
+
                             <li class="nav-item">
                                 <a class="nav-link text-white @(currentController == "Reportes" ? "active" : "")" asp-controller="Reportes" asp-action="Index">Reportes</a>
                             </li>
+                                 -->
                             <li class="nav-item">
-                                <a class="nav-link text-white @(currentController == "Profile" ? "active" : "")" asp-controller="Profile" asp-action="Index">Mi Perfil</a>
+                                <a class="nav-link text-white @(currentController == "Profile" ? "active" : "")" asp-controller="Profile" asp-action="Profile">Mi Perfil</a>
                             </li>
+                                <!--
                             <li class="nav-item">
                                 <a class="nav-link text-white @(currentController == "Ajustes" ? "active" : "")" asp-controller="Ajustes" asp-action="Index">Ajustes</a>
                             </li>
-
+                                -->
                             @if (User.IsInRole("Admin"))
                             {
                                 <li class="nav-item">
-                                    <a class="nav-link text-white @(currentController == "Admin" ? "active" : "")" asp-controller="Admin" asp-action="Users">Administración</a>
+                                    <a class="nav-link text-white @(currentController == "Admin" ? "active" : "")" asp-controller="Admin" asp-action="Admin">Administración</a>
                                 </li>
                             }
                         }

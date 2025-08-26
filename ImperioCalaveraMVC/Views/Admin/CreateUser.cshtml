@@ -1,0 +1,74 @@
+﻿@model ImperioCalaveraMVC.Models.CreateUserViewModel
+@{
+    ViewData["Title"] = "Crear Nuevo Usuario";
+    Layout = "_Layout"; // Asegúrate de que esta vista use tu _Layout.cshtml
+}
+
+<div class="container py-5">
+    <div class="row justify-content-center">
+        <div class="col-md-8 col-lg-6">
+            <div class="card shadow-lg border-0 rounded-4 p-4">
+                <div class="card-body">
+                    <h2 class="card-title text-center mb-4 fw-bold text-dark">Crear Nuevo Usuario</h2>
+
+                    @* Mostrar errores de validación del lado del servidor *@
+                    <div asp-validation-summary="ModelOnly" class="alert alert-danger alert-dismissible fade show rounded-3 mb-4" role="alert">
+                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                    </div>
+
+                    <form asp-controller="Admin" asp-action="CreateUser" method="post">
+                        @Html.AntiForgeryToken()
+
+                        <div class="mb-3">
+                            <label asp-for="Nombre" class="form-label"></label>
+                            <input asp-for="Nombre" class="form-control" />
+                            <span asp-validation-for="Nombre" class="text-danger"></span>
+                        </div>
+                        <div class="mb-3">
+                            <label asp-for="Email" class="form-label"></label>
+                            <input asp-for="Email" class="form-control" />
+                            <span asp-validation-for="Email" class="text-danger"></span>
+                        </div>
+                        <div class="mb-3">
+                            <label asp-for="Password" class="form-label"></label>
+                            <input asp-for="Password" class="form-control" />
+                            <span asp-validation-for="Password" class="text-danger"></span>
+                        </div>
+                        <div class="mb-3">
+                            <label asp-for="ConfirmPassword" class="form-label"></label>
+                            <input asp-for="ConfirmPassword" class="form-control" />
+                            <span asp-validation-for="ConfirmPassword" class="text-danger"></span>
+                        </div>
+                        <div class="mb-3">
+                            <label asp-for="PhoneNumber" class="form-label"></label>
+                            <input asp-for="PhoneNumber" class="form-control" />
+                            <span asp-validation-for="PhoneNumber" class="text-danger"></span>
+                        </div>
+                        <div class="mb-3">
+                            <label asp-for="TelefonoEmergencia" class="form-label"></label>
+                            <input asp-for="TelefonoEmergencia" class="form-control" />
+                            <span asp-validation-for="TelefonoEmergencia" class="text-danger"></span>
+                        </div>
+
+                        <div class="mb-4">
+                            <label asp-for="SelectedRole" class="form-label"></label>
+                            <select asp-for="SelectedRole" asp-items="Model.AvailableRoles" class="form-select">
+                                <option value="">-- Seleccione un Rol --</option>
+                            </select>
+                            <span asp-validation-for="SelectedRole" class="text-danger"></span>
+                        </div>
+
+                        <div class="d-grid gap-2">
+                            <button type="submit" class="btn btn-primary btn-lg">Crear Usuario</button>
+                            <a asp-controller="Admin" asp-action="Admin" class="btn btn-secondary btn-lg">Volver a Administración</a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" /> @* Asegura que jQuery Validation funcione *@
+}

@@ -92,7 +92,7 @@ namespace ImperioCalaveraMVC.Controllers
                 if (result.Succeeded)
                 {
                     // Define el nombre del rol por defecto
-                    const string defaultRole = "Admin";
+                    const string defaultRole = "Cliente";
 
                     // Verifica si el rol "Cliente" existe. Si no existe, lo crea.
                     if (!await _roleManager.RoleExistsAsync(defaultRole))

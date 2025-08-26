@@ -31,6 +31,7 @@ namespace ImperioCalaveraMVC.Models.ViewModels
 
         // Propiedades para cambiar la contraseña (opcional, si quieres incluirlo aquí)
         [DataType(DataType.Password)]
+        [StringLength(100, ErrorMessage = "La {0} debe tener al menos {2} y un máximo de {1} caracteres de longitud.", MinimumLength = 6)]
         [Display(Name = "Nueva Contraseña")]
         public string? NewPassword { get; set; }
 

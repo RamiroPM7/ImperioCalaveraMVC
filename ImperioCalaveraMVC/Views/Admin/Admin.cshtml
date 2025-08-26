@@ -1,0 +1,254 @@
+﻿@model IEnumerable<ImperioCalaveraMVC.Models.UserCardViewModel>
+@{
+    ViewData["Title"] = "Administración de Usuarios";
+    Layout = "_Layout"; 
+}
+
+<div class="container py-5">
+    <h1 class="text-center mb-5 fw-bold text-dark">Administración de Usuarios</h1>
+
+
+    @* Botón para crear nuevo usuario *@
+    <div class="text-center mb-5">
+        <button type="button" class="btn btn-primary btn-lg shadow-sm rounded-3 px-4" id="createUserButton"
+                data-bs-toggle="modal" data-bs-target="#createUserModal">
+            <i class="fas fa-user-plus me-2"></i> Crear Nuevo Usuario  @* Corregí el icono a fa-user-plus para que sea más adecuado, pero puedes mantener fa-edit si prefieres *@
+        </button>
+    </div>
+
+   
+
+
+    @* Mensaje de éxito/error global (desde TempData) *@
+    @if (TempData["SuccessMessage"] != null)
+    {
+        <div class="alert alert-success alert-dismissible fade show rounded-3 mb-4" role="alert">
+            @TempData["SuccessMessage"]
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+    }
+    @if (TempData["ErrorMessage"] != null)
+    {
+        <div class="alert alert-danger alert-dismissible fade show rounded-3 mb-4" role="alert">
+            @TempData["ErrorMessage"]
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+    }
+
+    <div class="row g-4 justify-content-center">
+        @if (Model != null && Model.Any())
+        {
+            @foreach (var user in Model)
+            {
+                <div class="col-12 col-md-6 col-lg-4">
+                    <div class="card h-100 shadow-lg border-0 rounded-4 p-4 d-flex flex-column">
+                        <div class="card-body">
+                            <h5 class="card-title fw-bold text-dark mb-3">@user.Nombre</h5>
+                            <p class="card-text text-muted mb-1"><strong>Email:</strong> @user.Email</p>
+                            <p class="card-text text-muted mb-1"><strong>Teléfono:</strong> @(string.IsNullOrEmpty(user.PhoneNumber) ? "N/A" : user.PhoneNumber)</p>
+                            <p class="card-text text-muted mb-1">
+                                <strong>Roles:</strong>
+                                @if (user.Roles != null && user.Roles.Any())
+                                {
+                                    <span>@string.Join(", ", user.Roles)</span>
+                                }
+                                else
+                                {
+                                    <span>Ninguno</span>
+                                }
+                            </p>
+                            <p class="card-text text-muted mb-3">
+                                <strong>Estado:</strong>
+                                @if (user.IsLockedOut)
+                                {
+                                    <span class="badge bg-danger">Bloqueado</span>
+                                    @if (user.LockoutEnd.HasValue && user.LockoutEnd.Value > DateTimeOffset.UtcNow)
+                                    {
+                                        <span> hasta @user.LockoutEnd.Value.LocalDateTime.ToString("dd/MM/yyyy")</span>
+                                    }
+                                    else
+                                    {
+                                        <span> (Indefinido/Expirado)</span>
+                                    }
+                                }
+                                else
+                                {
+                                    <span class="badge bg-success">Activo</span>
+                                }
+                            </p>
+                        </div>
+                        <div class="card-footer bg-transparent border-0 pt-0 mt-auto d-flex justify-content-around align-items-center">
+
+                            <button type="button" class="btn btn-sm btn-info edit-user-btn" data-user-id="@user.Id" title="Editar Usuario">
+                                <i class="fas fa-edit"></i> Editar
+                            </button>
+
+                            <form asp-controller="Admin" asp-action="ToggleLockout" method="post" class="d-inline-block toggle-lockout-form">
+                                @Html.AntiForgeryToken()
+                                <input type="hidden" name="id" value="@user.Id" />
+                                <button type="submit" class="btn btn-sm @(user.IsLockedOut ? "btn-success" : "btn-warning")" title="@(user.IsLockedOut ? "Desbloquear Usuario" : "Bloquear Usuario")">
+                                    <i class="fas @(user.IsLockedOut ? "fa-unlock" : "fa-lock")"></i> @(user.IsLockedOut ? "Desbloquear" : "Bloquear")
+                                </button>
+                            </form>
+                            <form asp-controller="Admin" asp-action="DeleteUser" method="post" class="d-inline-block delete-user-form">
+                                @Html.AntiForgeryToken()
+                                <input type="hidden" name="id" value="@user.Id" />
+                                <button type="submit" class="btn btn-sm btn-danger" title="Eliminar Usuario">
+                                    <i class="fas fa-trash-alt"></i> Eliminar
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            }
+        }
+        else
+        {
+            <div class="col-12 text-center">
+                <p class="lead text-muted">No se encontraron usuarios para administrar con los roles especificados.</p>
+            </div>
+        }
+    </div>
+</div>
+
+@* Modal para Crear Nuevo Usuario *@
+<div class="modal fade" id="createUserModal" tabindex="-1" aria-labelledby="createUserModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content">
+            <div class="modal-header bg-dark text-white">
+                <h5 class="modal-title" id="createUserModalLabel">Crear Nuevo Usuario</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form id="createUserForm" asp-controller="Admin" asp-action="CreateUser" method="post">
+                    @Html.AntiForgeryToken()
+
+                    <div class="mb-3">
+                        <label for="createUserName" class="form-label">Nombre Completo</label>
+                        <input type="text" class="form-control" id="createUserName" name="Nombre" autocomplete="name" required />
+                    </div>
+                    <div class="mb-3">
+                        <label for="createUserEmail" class="form-label">Correo Electrónico</label>
+                        <input type="email" class="form-control" id="createUserEmail" name="Email" required />
+                    </div>
+                    <div class="mb-3">
+                        <label for="createUserPhoneNumber" class="form-label">Número de Teléfono</label>
+                        <input type="tel" class="form-control" id="createUserPhoneNumber" name="PhoneNumber" />
+                    </div>
+                    <div class="mb-3">
+                        <label for="createUserTelefonoEmergencia" class="form-label">Teléfono de Emergencia</label>
+                        <input type="tel" class="form-control" id="createUserTelefonoEmergencia" name="TelefonoEmergencia" />
+                    </div>
+
+                    <hr class="my-4" />
+                    <h6 class="mb-3">Datos de Acceso</h6>
+                    <div class="mb-3">
+                        <label for="createUserPassword" class="form-label">Contraseña</label>
+                        <input type="password" class="form-control" id="createUserPassword" name="Password" required />
+                    </div>
+                    <div class="mb-3">
+                        <label for="createUserConfirmPassword" class="form-label">Confirmar Contraseña</label>
+                        <input type="password" class="form-control" id="createUserConfirmPassword" name="ConfirmPassword" required />
+                    </div>
+                    <div class="mb-3">
+                        <label for="createUserSelectedRole" class="form-label">Rol</label>
+                        <select class="form-control" id="createUserSelectedRole" name="SelectedRole" required>
+                            <option value="">Selecciona un rol</option>
+                            <option value="Admin">Admin</option>
+                            <option value="Barbero">Barbero</option>
+                            @* Puedes añadir más roles aquí si los tienes *@
+                        </select>
+                    </div>
+
+                    <div class="text-danger mt-3" id="createValidationSummary"></div>
+
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                        <button type="submit" class="btn btn-primary">Crear Usuario</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+@* Modal de Edición de Usuario *@
+<div class="modal fade" id="editUserModal" tabindex="-1" aria-labelledby="editUserModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content">
+            <div class="modal-header bg-dark text-white">
+                <h5 class="modal-title" id="editUserModalLabel">Editar Usuario</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+
+                <form id="editUserForm" asp-controller="Admin" asp-action="EditUser" method="post">
+                    @Html.AntiForgeryToken()
+
+                    <input type="hidden" id="editUserId" name="Id"  />
+
+                    <div class="mb-3">
+                        <label for="editUserNombre" class="form-label">Nombre Completo</label>
+                        <input type="text" class="form-control" id="editUserNombre" name="Nombre" autocomplete="name" required />
+                        <span class="text-danger" data-valmsg-for="Nombre"></span>
+                    </div>
+                    <div class="mb-3">
+                        <label for="editUserEmail" class="form-label">Correo Electrónico</label>
+                        <input type="email" class="form-control" id="editUserEmail" name="Email" required />
+                        <span class="text-danger" data-valmsg-for="Email"></span>
+                    </div>
+                    <div class="mb-3">
+                        <label for="editUserPhoneNumber" class="form-label">Número de Teléfono</label>
+                        <input type="tel" class="form-control" id="editUserPhoneNumber" name="PhoneNumber" />
+                        <span class="text-danger" data-valmsg-for="PhoneNumber"></span>
+                    </div>
+                    <div class="mb-3">
+                        <label for="editUserTelefonoEmergencia" class="form-label">Teléfono de Emergencia</label>
+                        <input type="tel" class="form-control" id="editUserTelefonoEmergencia" name="TelefonoEmergencia" />
+                        <span class="text-danger" data-valmsg-for="TelefonoEmergencia"></span>
+                    </div>
+
+                    <hr class="my-4" />
+                    <h6 class="mb-3">Cambiar Contraseña (Opcional)</h6>
+                    <div class="mb-3">
+                        <label for="editUserNewPassword" class="form-label">Nueva Contraseña</label>
+                        <input type="password" class="form-control" id="editUserNewPassword" name="NewPassword" />
+                        <span class="text-danger" data-valmsg-for="NewPassword"></span>
+                    </div>
+                    <div class="mb-3">
+                        <label for="editUserConfirmNewPassword" class="form-label">Confirmar Nueva Contraseña</label>
+                        <input type="password" class="form-control" id="editUserConfirmNewPassword" name="ConfirmNewPassword" />
+                        <span class="text-danger" data-valmsg-for="ConfirmNewPassword"></span>
+                    </div>
+
+                    <hr class="my-4" />
+                    <h6 class="mb-3">Bloqueo por Vacaciones (Opcional)</h6>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="editUserLockoutStartDate" class="form-label">Fecha de Inicio de Bloqueo</label>
+                            <input type="date" class="form-control" id="editUserLockoutStartDate" name="LockoutStartDate" />
+                            <span class="text-danger" data-valmsg-for="LockoutStartDate"></span>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="editUserLockoutEndDate" class="form-label">Fecha de Fin de Bloqueo</label>
+                            <input type="date" class="form-control" id="editUserLockoutEndDate" name="LockoutEndDate" />
+                            <span class="text-danger" data-valmsg-for="LockoutEndDate"></span>
+                        </div>
+                    </div>
+                    <div class="text-danger mt-3" id="modalValidationSummary"></div> @* Para errores generales del modal *@
+
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                        <button type="submit" class="btn btn-primary">Guardar Cambios</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" /> @* Asegura que jQuery Validation funcione *@
+    <script src="~/js/admin.js"></script> @* ¡Aquí se incluye tu nuevo archivo JS! *@
+}

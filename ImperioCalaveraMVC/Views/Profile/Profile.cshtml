@@ -1,9 +1,119 @@
-﻿<!DOCTYPE html>
-    <html>
-    <head>
-        <title></title>
-    </head>
-    <body>
-    
-    </body>
-    </html>
+﻿@model ImperioCalaveraMVC.Models.ViewModels.ProfileViewModel
+@{
+    ViewData["Title"] = "Mi Perfil";
+    Layout = "_Layout"; // Asegúrate de que esta vista use tu _Layout.cshtml
+}
+
+<div class="container py-5">
+    <div class="row justify-content-center">
+        <div class="col-md-8 col-lg-6">
+            <div class="card shadow-lg border-0 rounded-4 p-4">
+                <div class="card-body">
+                    <h2 class="card-title text-center mb-4 fw-bold text-dark">Mi Perfil</h2>
+
+                    @* Mostrar mensaje de éxito o error (desde TempData o ModelState) *@
+                    @if (TempData["SuccessMessage"] != null)
+                    {
+                        <div class="alert alert-success alert-dismissible fade show rounded-3 mb-4" role="alert">
+                            @TempData["SuccessMessage"]
+                            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                        </div>
+                    }
+                    @if (!ViewData.ModelState.IsValid)
+                    {
+                        <div class="alert alert-danger alert-dismissible fade show rounded-3 mb-4" role="alert">
+                            <ul class="list-unstyled mb-0">
+                                @foreach (var modelState in ViewData.ModelState.Values)
+                                {
+                                    foreach (var error in modelState.Errors)
+                                    {
+                                        <li>@error.ErrorMessage</li>
+                                    }
+                                }
+                            </ul>
+                            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                        </div>
+                    }
+
+                    <form id="profileForm" asp-controller="Profile" asp-action="Edit" method="post">
+                        @Html.AntiForgeryToken()
+
+                        <div class="mb-3">
+                            <label asp-for="Nombre" class="form-label fw-bold"></label>
+                            <div class="form-control-plaintext" id="displayNombre">@Model.Nombre</div>
+                            <input asp-for="Nombre" class="form-control d-none" id="editNombre" />
+                            <span asp-validation-for="Nombre" class="text-danger"></span>
+                        </div>
+                        <div class="mb-3">
+                            <label asp-for="Email" class="form-label fw-bold"></label>
+                            <div class="form-control-plaintext" id="displayEmail">@Model.Email</div>
+                            <input asp-for="Email" class="form-control d-none" id="editEmail" />
+                            <span asp-validation-for="Email" class="text-danger"></span>
+                        </div>
+                        <div class="mb-3">
+                            <label asp-for="PhoneNumber" class="form-label fw-bold"></label>
+                            <div class="form-control-plaintext" id="displayPhoneNumber">@Model.PhoneNumber</div>
+                            <input asp-for="PhoneNumber" class="form-control d-none" id="editPhoneNumber" />
+                            <span asp-validation-for="PhoneNumber" class="text-danger"></span>
+                        </div>
+                        <div class="mb-4">
+                            <label asp-for="TelefonoEmergencia" class="form-label fw-bold"></label>
+                            <div class="form-control-plaintext" id="displayTelefonoEmergencia">@Model.TelefonoEmergencia</div>
+                            <input asp-for="TelefonoEmergencia" class="form-control d-none" id="editTelefonoEmergencia" />
+                            <span asp-validation-for="TelefonoEmergencia" class="text-danger"></span>
+                        </div>
+
+                        @* Sección para cambiar contraseña (opcional, oculto por defecto) *@
+                        <div id="passwordChangeSection" class="border-top pt-4 mt-4 d-none">
+                            <h5 class="mb-3 fw-bold">Cambiar Contraseña (Opcional)</h5>
+                            <div class="mb-3">
+                                <label asp-for="NewPassword" class="form-label"></label>
+                                <input asp-for="NewPassword" class="form-control" />
+                                <span asp-validation-for="NewPassword" class="text-danger"></span>
+                            </div>
+                            <div class="mb-3">
+                                <label asp-for="ConfirmNewPassword" class="form-label"></label>
+                                <input asp-for="ConfirmNewPassword" class="form-control" />
+                                <span asp-validation-for="ConfirmNewPassword" class="text-danger"></span>
+                            </div>
+                        </div>
+
+                        <div class="d-grid gap-2">
+                            <button type="button" id="editProfileBtn" class="btn btn-primary btn-lg">Editar Perfil</button>
+                            <button type="submit" id="saveProfileBtn" class="btn btn-success btn-lg d-none">Guardar Cambios</button>
+                            <button type="button" id="cancelEditBtn" class="btn btn-secondary btn-lg d-none">Cancelar</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@* Modal para Confirmación de Contraseña *@
+<div class="modal fade" id="passwordConfirmationModal" tabindex="-1" aria-labelledby="passwordConfirmationModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header bg-dark text-white">
+                <h5 class="modal-title" id="passwordConfirmationModalLabel">Confirmar Contraseña</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <label for="currentPasswordInput" class="form-label">Por favor, introduce tu contraseña actual para editar tu perfil:</label>
+                    <input type="password" class="form-control" id="currentPasswordInput" placeholder="Contraseña actual" />
+                    <div id="passwordError" class="text-danger mt-2 d-none"></div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-primary" id="confirmPasswordBtn">Confirmar</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" /> @* Asegura que jQuery Validation funcione *@
+    <script src="~/js/profile.js"></script> @* ¡Aquí se incluye tu nuevo archivo JS! *@
+}

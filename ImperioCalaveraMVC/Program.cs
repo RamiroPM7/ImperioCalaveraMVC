@@ -26,7 +26,7 @@ builder.Services.AddIdentity<Usuario, IdentityRole>(options => // Especifica tu 
 builder.Services.ConfigureApplicationCookie(options =>
 {
     options.Cookie.HttpOnly = true;
-    options.ExpireTimeSpan = TimeSpan.FromMinutes(30);
+    options.ExpireTimeSpan = TimeSpan.FromHours(24);
     options.LoginPath = "/Auth/Index"; // Ruta a tu controlador/acción de Login
     options.LogoutPath = "/Auth/Logout"; // Ruta para tu controlador/acción de Logout
     options.AccessDeniedPath = "/Auth/AccessDenied"; // Ruta para acceso denegado
