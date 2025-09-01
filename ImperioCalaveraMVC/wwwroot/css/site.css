@@ -85,4 +85,35 @@ body {
     font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24
 }
 
+/* ---------- Minimal FullCalendar styles ---------- */
+
+/* Contenedor general (ajusta paddings si quieres) */
+/* Esto afecta solo a los links dentro del calendario */
+#calendar table th .fc-col-header-cell-cushion a {
+    text-decoration: none !important;
+    color: #2c3e50 !important;
+}
+
+#calendar .fc .fc-button {
+    color: #000000;
+    text-decoration: none !important;
+}
+
+/* Para los botones del encabezado (prev, next, today) */
+.fc .fc-button {
+    color: #000000; /* Color negro, ajusta según necesites */
+    text-decoration: none !important; /* Quita el subrayado */
+}
+
+/* Para los días del calendario (si tienen enlaces) */
+.fc-daygrid-day a {
+    color: #333333; /* Color gris oscuro, ajusta según necesites */
+    text-decoration: none !important; /* Quita el subrayado */
+}
+
+    /* Opcional: Si quieres que el hover no aplique subrayado */
+    .fc .fc-button:hover,
+    .fc-daygrid-day a:hover {
+        text-decoration: none !important;
+    }
 

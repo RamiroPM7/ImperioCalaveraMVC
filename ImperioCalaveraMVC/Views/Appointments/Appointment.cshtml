@@ -1,5 +1,67 @@
-﻿@*
-    For more information on enabling MVC for empty projects, visit https://go.microsoft.com/fwlink/?LinkID=397860
-*@
-@{
+﻿@{
+    ViewData["Title"] = "Appointments";
+    Layout = "_Layout";
 }
+
+@model AppointmentCardViewModel
+
+<section id="appointment-section" class="py-5">
+    <div class="container">
+        <ul class="nav nav-tabs mb-4" id="myTab" role="tablist">
+            <li class="nav-item" role="presentation">
+                <button class="nav-link active" id="book-tab" data-bs-toggle="tab" data-bs-target="#book-appointment" type="button" role="tab" aria-controls="book-appointment" aria-selected="true">
+                    Agendar Cita
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="my-tab" data-bs-toggle="tab" data-bs-target="#my-appointments" type="button" role="tab" aria-controls="my-appointments" aria-selected="false">
+                    Mis Citas
+                </button>
+            </li>
+        </ul>
+
+        <div class="tab-content" id="myTabContent">
+            <!-- Pestaña para Agendar Cita -->
+            <div class="tab-pane fade show active" id="book-appointment" role="tabpanel" aria-labelledby="book-tab">
+                <div class="card p-4 shadow">
+                    <div id="calendar"></div> <!-- Contenedor para FullCalendar -->
+                </div>
+
+                <div class="card p-4 mt-4 shadow">
+                    <h5 class="mb-3">Selecciona una hora</h5>
+                    <div id="time-slots-container" class="d-flex flex-wrap" style="gap: 15px;">
+                        <!-- Tarjetas de hora se generarán aquí -->
+                    </div>
+                </div>
+
+                <div class="text-center mt-4">
+                    <button id="agendar-cita-btn" class="btn btn-primary btn-lg">Agendar Cita</button>
+                </div>
+            </div>
+
+            <!-- Pestaña para Mis Citas -->
+            <div class="tab-pane fade" id="my-appointments" role="tabpanel" aria-labelledby="my-tab">
+                <div id="my-appointments-container" class="mt-3">
+
+                    @if (ViewBag.Mensaje != null)
+                    {
+                        <div class="alert alert-warning text-center">
+                            <strong>@ViewBag.Mensaje</strong>
+                        </div>
+
+                    }
+                    else
+                    {
+                        
+                    }
+                    <!-- Tarjetas de citas se generarán aquí -->
+                </div>
+            </div>
+
+
+        </div>
+    </div>
+</section>
+
+
+
