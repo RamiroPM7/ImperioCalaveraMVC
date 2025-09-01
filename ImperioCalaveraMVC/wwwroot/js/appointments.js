@@ -1,4 +1,5 @@
-﻿document.addEventListener('DOMContentLoaded', function () {
+﻿
+document.addEventListener('DOMContentLoaded', function () {
     // Validar que la librería exista
     if (typeof FullCalendar === 'undefined') {
         console.error('FullCalendar no está cargado. Verifica el orden de los <script>.');
