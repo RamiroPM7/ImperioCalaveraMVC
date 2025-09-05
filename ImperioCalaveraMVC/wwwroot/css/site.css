@@ -86,34 +86,18 @@ body {
 }
 
 /* ---------- Minimal FullCalendar styles ---------- */
-
-/* Contenedor general (ajusta paddings si quieres) */
-/* Esto afecta solo a los links dentro del calendario */
-#calendar table th .fc-col-header-cell-cushion a {
-    text-decoration: none !important;
-    color: #2c3e50 !important;
+.selected-day { /*Día seleccionado*/
+    background-color: #e3f2fd !important; /* Azul muy claro */
+    border: 2px solid #90caf9 !important; /* Azul medio suave */
 }
 
-#calendar .fc .fc-button {
-    color: #000000;
-    text-decoration: none !important;
+.fc-day-disabled {
+    background-color: #f8f9fa !important; /* Light gray to indicate disabled */
+    opacity: 0.5 !important;
+    pointer-events: none !important; /* Prevent clicks on disabled days */
 }
 
-/* Para los botones del encabezado (prev, next, today) */
-.fc .fc-button {
-    color: #000000; /* Color negro, ajusta según necesites */
-    text-decoration: none !important; /* Quita el subrayado */
+.fc-day-no-highlight.fc-day-today {
+    background-color: inherit !important; /* Remove highlight by inheriting default */
+    border: none !important;
 }
-
-/* Para los días del calendario (si tienen enlaces) */
-.fc-daygrid-day a {
-    color: #333333; /* Color gris oscuro, ajusta según necesites */
-    text-decoration: none !important; /* Quita el subrayado */
-}
-
-    /* Opcional: Si quieres que el hover no aplique subrayado */
-    .fc .fc-button:hover,
-    .fc-daygrid-day a:hover {
-        text-decoration: none !important;
-    }
-

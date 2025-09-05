@@ -18,11 +18,11 @@ namespace ImperioCalaveraMVC.Models.Entities
         [Required]
         public required string ClienteId { get; set; }
 
-        public required Usuario Cliente { get; set; }
+        public  Usuario Cliente { get; set; }
 
         [Required]
         public required string BarberoId { get; set; }
-        public required Usuario Barbero { get; set; }
+        public  Usuario Barbero { get; set; }
 
        /* [Required]
         public int ServicioId { get; set; }
@@ -44,7 +44,13 @@ namespace ImperioCalaveraMVC.Models.Entities
         public EstadoCita Estado { get; set; } = EstadoCita.Pendiente;
 
         [MaxLength(300)]
-        public string? Observaciones { get; set; }
+        public string? WalkInCustomerNotes { get; set; }
+
+        [MaxLength(100)]
+        public string? WalkInCustomerName { get; set; }
+
+        [MaxLength(20)]
+        public string? WalkInCustomerPhone { get; set; }
 
         [Required]
         public DateTime FechaCreacion { get; set; } = DateTime.UtcNow;
