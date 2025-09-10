@@ -13558,6 +13558,123 @@ document.addEventListener('DOMContentLoaded', function () {
   var bookingButton = document.getElementById('agendar-cita-btn');
   if (!calendarEl) return;
 
+  // --- START OF SIGNALR SETUP --- 🚀
+  // 1. Establish the connection to the hub
+  var connection = new signalR.HubConnectionBuilder().withUrl("/appointmentHub") // This must match the endpoint in Program.cs
+  .build();
+
+  // 2. Define what happens when a "SlotBooked" message comes from the server
+  connection.on("SlotBooked", function (date, time) {
+    // Check if the update is for the day the user is currently viewing
+    if (selectedDateStr === date) {
+      console.log("Slot ".concat(time, " on ").concat(date, " was booked by another user. Removing from view."));
+      var buttonToRemove = document.querySelector(".time-slot-btn[data-time=\"".concat(time, "\"]"));
+      if (buttonToRemove) {
+        buttonToRemove.remove();
+      }
+    }
+  });
+
+  // --- Helper para obtener la clase del badge de estado ---
+  function getBadgeClass(estado) {
+    if (estado === 'Iniciada') return 'bg-success';
+    if (estado === 'Pendiente') return 'bg-primary';
+    return 'bg-danger'; // Para Cancelada o Finalizada
+  }
+  function getActionButtons(cita) {
+    if (cita.estado === 'Pendiente') {
+      return "\n                <button class=\"btn btn-sm btn-success\">Iniciar Cita</button>\n                <button class=\"btn btn-sm btn-outline-danger btn-cancel-appointment\" data-cita-id=\"".concat(cita.citaId, "\">Cancelar</button>\n            ");
+    }
+    if (cita.estado === 'Iniciada') {
+      return "<button class=\"btn btn-sm btn-primary\">Finalizar Cita</button>";
+    }
+    return ''; // No hay botones si está finalizada o cancelada
+  }
+
+  // In appointments.js, replace the entire connection.on("AddNewAppointmentCard", ...) function with this:
+
+  connection.on("AddNewAppointmentCard", function (cita) {
+    console.log("New appointment card received for role:", window.currentUserRole);
+    var appointmentsContainer = document.getElementById('my-appointments-container');
+    var noAppointmentsMessage = appointmentsContainer.querySelector('.alert');
+    if (noAppointmentsMessage) {
+      noAppointmentsMessage.remove();
+    }
+
+    // --- Helper function to format date/time ---
+    var fecha = new Date(cita.fechaHora);
+    var dateInfo = {
+      month: fecha.toLocaleString('es-MX', {
+        month: 'short'
+      }),
+      day: fecha.toLocaleString('es-MX', {
+        day: '2-digit'
+      }),
+      year: fecha.getFullYear(),
+      time: fecha.toLocaleString('es-MX', {
+        hour: 'numeric',
+        minute: '2-digit',
+        hour12: true
+      })
+    };
+
+    //helpers
+
+    var cardHtml = '';
+
+    // --- DECIDE WHICH CARD TO BUILD BASED ON THE ROLE ---
+    if (window.currentUserRole === 'Admin' || window.currentUserRole === 'Barbero') {
+      // === BUILD THE CARD FOR ADMINS AND BARBERS ===
+      cardHtml = "\n            <div class=\"card shadow-sm mb-3\" id=\"cita-card-".concat(cita.citaId, "\" style=\"max-width: 540px; margin: auto;\">\n                <div class=\"row g-0\">\n                    <div class=\"col-md-4 d-flex justify-content-center align-items-center bg-secondary text-white p-3 rounded-start\">\n                        <div class=\"text-center\">\n                            <h5 class=\"card-title mb-0 text-capitalize\">").concat(dateInfo.month, "</h5>\n                            <h1 class=\"display-4 mb-0\" style=\"font-weight: 600;\">").concat(dateInfo.day, "</h1>\n                            <h6 class=\"card-title mb-0\">").concat(dateInfo.time, "</h6>\n                        </div>\n                    </div>\n                    <div class=\"col-md-8\">\n                        <div class=\"card-body\">\n                            <h5 class=\"card-title\">Detalles de la Cita</h5>\n                            <hr class=\"my-2\">\n                            <h6 class=\"card-subtitle mb-2 text-muted\">Cliente</h6>\n                            ").concat(cita.walkInCustomerName ? "<p class=\"card-text mb-1\"><strong>Nombre:</strong> ".concat(cita.walkInCustomerName, " (Walk-In)</p>\n                                   <p class=\"card-text mb-1\"><strong>Tel\xE9fono:</strong> ").concat(cita.walkInCustomerPhone, "</p>") : "<p class=\"card-text mb-1\"><strong>Nombre:</strong> ".concat(cita.clienteName, "</p>\n                                   <p class=\"card-text mb-1\"><strong>Tel\xE9fono:</strong> ").concat(cita.clientePhone, "</p>\n                                   ").concat(cita.clienteTelEmergencia ? "<p class=\"card-text mb-1\"><strong>Tel. Emergencia:</strong> ".concat(cita.clienteTelEmergencia, "</p>") : ''), "\n                            ").concat(cita.walkInCustomerNotes ? "<p class=\"card-text mb-1\"><strong>Notas:</strong> ".concat(cita.walkInCustomerNotes, "</p>") : '', "\n                            <hr class=\"my-2\">\n                            ").concat(window.currentUserRole === 'Admin' ? "<h6 class=\"card-subtitle mb-2 text-muted\">Barbero</h6>\n                                   <p class=\"card-text mb-1\"><strong>Nombre:</strong> ".concat(cita.barberoName, "</p>\n                                   <hr class=\"my-2\">") : '', "\n                            <p class=\"card-text mb-2\">\n                                <strong>Estado:</strong> <span class=\"badge ").concat(getBadgeClass(cita.estado), "\">").concat(cita.estado, "</span>\n                            </p>\n                            <div class=\"d-flex gap-2\">\n                                ").concat(getActionButtons(cita), "\n                            </div>\n                        </div>\n                    </div>\n                </div>\n            </div>");
+    } else {
+      // === BUILD THE CARD FOR REGULAR CLIENTS ===
+      cardHtml = "\n            <div class=\"card shadow-sm mb-3\" id=\"cita-card-".concat(cita.citaId, "\" style=\"max-width: 540px; margin: auto;\">\n                <div class=\"row g-0\">\n                    <div class=\"col-md-4 d-flex justify-content-center align-items-center bg-dark text-white p-3 rounded-start\">\n                        <div class=\"text-center\">\n                            <h5 class=\"card-title mb-0 text-capitalize\">").concat(dateInfo.month, "</h5>\n                            <h1 class=\"display-4 mb-0\" style=\"font-weight: 600;\">").concat(dateInfo.day, "</h1>\n                            <h6 class=\"card-title mb-0\">").concat(dateInfo.year, "</h6>\n                        </div>\n                    </div>\n                    <div class=\"col-md-8\">\n                        <div class=\"card-body\">\n                            <h5 class=\"card-title\">Tu Cita Agendada</h5>\n                            <p class=\"card-text mb-1\"><strong>Barbero:</strong> ").concat(cita.barberoName, "</p>\n                            <p class=\"card-text mb-1\"><strong>Hora:</strong> ").concat(dateInfo.time, "</p>\n                            <hr class=\"my-2\">\n                            <h6 class=\"card-subtitle mb-2 text-muted\">Detalles del Cliente</h6>\n                            <p class=\"card-text mb-1\"><strong>Nombre:</strong> ").concat(cita.clienteName, "</p>\n                            <hr class=\"my-2\">\n                            <p class=\"card-text mb-2\">\n                                <strong>Estado:</strong> <span class=\"badge ").concat(getBadgeClass(cita.estado), "\">").concat(cita.estado, "</span>\n                            </p>\n                            ").concat(cita.estado === 'Pendiente' ? "<button class=\"btn btn-sm btn-outline-danger btn-cancel-appointment\" data-cita-id=\"".concat(cita.citaId, "\">\n                                       Cancelar Cita\n                                   </button>") : '', "\n                        </div>\n                    </div>\n                </div>\n            </div>");
+    }
+
+    // Add the newly created card to the top of the list
+    appointmentsContainer.insertAdjacentHTML('afterbegin', cardHtml);
+  });
+
+  // === ESTE ES EL RECEPTOR COMPLETO Y CORREGIDO ===
+  connection.on("ReceiveStatusUpdate", function (citaId, newStatus) {
+    var card = document.getElementById("cita-card-".concat(citaId));
+    if (!card) return;
+
+    // 1. Actualiza la Insignia (Badge) - Texto Y COLOR
+    var badge = card.querySelector('.badge');
+    if (badge) {
+      badge.textContent = newStatus;
+      // --- LÍNEA CORREGIDA ---
+      // Se usan comillas invertidas (`) para crear el string correctamente
+      badge.className = "badge ".concat(getBadgeClass(newStatus));
+    }
+
+    // 2. Actualiza los Botones de Acción
+    var actionsContainer = card.querySelector('.d-flex.gap-2'); // Para Staff
+    var clientButtonContainer = card.querySelector('.card-body'); // Para Cliente
+
+    if (window.currentUserRole === 'Admin' || window.currentUserRole === 'Barbero') {
+      if (actionsContainer) {
+        // Borra los botones viejos y reconstruye los nuevos
+        actionsContainer.innerHTML = getActionButtons({
+          estado: newStatus,
+          citaId: citaId
+        });
+      }
+    } else {
+      var oldButton = clientButtonContainer.querySelector('.btn-cancel-appointment');
+      if (oldButton) oldButton.remove(); // Elimina el botón 
+    }
+  });
+
+  // 4. Start the connection
+  connection.start().then(function () {
+    console.log("SignalR Connected.");
+  })["catch"](function (err) {
+    return console.error("SignalR Connection Error: ", err.toString());
+  });
+  // --- END OF SIGNALR SETUP ---
+
   // Function to fetch and display time slots
   function fetchAndDisplaySlots(_x) {
     return _fetchAndDisplaySlots.apply(this, arguments);
@@ -13661,9 +13778,10 @@ document.addEventListener('DOMContentLoaded', function () {
           return _context.a(2);
         case 1:
           bookingData = {
-            date: selectedDateStr,
-            time: selectedTime
-          };
+            Date: selectedDateStr,
+            Time: selectedTime
+          }; // ADD THIS LINE TO DEBUG
+          console.log("Sending booking data:", bookingData);
           walkInNameInput = document.getElementById('walk-in-customer-name');
           walkInPhoneInput = document.getElementById('walk-in-customer-phone'); // <-- Get the phone input
           walkInNotesInput = document.getElementById('walk-in-customer-notes');
@@ -13736,7 +13854,7 @@ document.addEventListener('DOMContentLoaded', function () {
     }, _callee, null, [[4, 11]]);
   })));
 
-  // --- Event Listener for Canceling Appointments (using Event Delegation) ---
+  // --- Event Listener for Canceling Appointments (UPDATED for SignalR) ---
   document.addEventListener('click', /*#__PURE__*/function () {
     var _ref2 = _asyncToGenerator(/*#__PURE__*/_regenerator().m(function _callee2(event) {
       var citaId, response, result, _t3;
@@ -13744,11 +13862,10 @@ document.addEventListener('DOMContentLoaded', function () {
         while (1) switch (_context2.p = _context2.n) {
           case 0:
             if (!event.target.classList.contains('btn-cancel-appointment')) {
-              _context2.n = 5;
+              _context2.n = 7;
               break;
             }
-            // 1. Get the Appointment ID from the button's data attribute
-            citaId = event.target.dataset.citaId; // 2. Ask the user for confirmation
+            citaId = event.target.dataset.citaId;
             if (confirm('¿Estás seguro de que quieres cancelar esta cita? Esta acción no se puede deshacer.')) {
               _context2.n = 1;
               break;
@@ -13759,40 +13876,34 @@ document.addEventListener('DOMContentLoaded', function () {
             _context2.n = 2;
             return fetch("/Appointments/CancelAppointment/".concat(citaId), {
               method: 'DELETE'
-              // We don't need headers or body, the ID is in the URL
             });
           case 2:
             response = _context2.v;
+            if (!response.ok) {
+              _context2.n = 4;
+              break;
+            }
             _context2.n = 3;
             return response.json();
           case 3:
             result = _context2.v;
-            if (response.ok && result.success) {
-              // Success!
-              alert(result.message);
-              // Reload the page to show the updated list (the simplest way)
-              window.location.reload();
-
-              // --- Optional: A slicker way (instead of reload) ---
-              /*const card = document.getElementById(`cita-card-${citaId}`);
-              card.querySelector('.badge').textContent = 'Cancelada';
-              card.querySelector('.badge').classList.replace('bg-primary', 'bg-danger');
-              event.target.remove(); // Remove the cancel button*/
-            } else {
-              // Show error message from the server
-              alert('Error al cancelar: ' + (result.message || 'Error desconocido.'));
-            }
             _context2.n = 5;
             break;
           case 4:
-            _context2.p = 4;
-            _t3 = _context2.v;
-            console.error('Error canceling appointment:', _t3);
-            alert('Hubo un error de conexión al intentar cancelar la cita.');
+            // Handle errors like 403 (Forbidden), 404 (Not Found), etc.
+            alert("Error al cancelar: ".concat(response.status, " ").concat(response.statusText));
           case 5:
+            _context2.n = 7;
+            break;
+          case 6:
+            _context2.p = 6;
+            _t3 = _context2.v;
+            // console.error('Error canceling appointment:', error);
+            alert('Hubo un error de conexión al intentar cancelar la cita.');
+          case 7:
             return _context2.a(2);
         }
-      }, _callee2, null, [[1, 4]]);
+      }, _callee2, null, [[1, 6]]);
     }));
     return function (_x2) {
       return _ref2.apply(this, arguments);

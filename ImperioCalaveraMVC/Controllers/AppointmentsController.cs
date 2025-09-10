@@ -1,10 +1,12 @@
 ﻿using System.Globalization;
 using ImperioCalaveraMVC.Data;
+using ImperioCalaveraMVC.Hubs;
 using ImperioCalaveraMVC.Models;
 using ImperioCalaveraMVC.Models.Entities;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
 using static ImperioCalaveraMVC.Models.Enums.Enums;
 
@@ -15,15 +17,22 @@ namespace ImperioCalaveraMVC.Controllers
         private readonly UserManager<Usuario> _userManager;
         private readonly RoleManager<IdentityRole> _roleManager;
         private readonly ApplicationDbContext _DbContext;
+        private readonly IHubContext<AppointmentHub> _hubContext;
 
-        public AppointmentsController(UserManager<Usuario> userManager, RoleManager<IdentityRole> roleManager, ApplicationDbContext context)
+        public AppointmentsController(UserManager<Usuario> userManager, 
+            RoleManager<IdentityRole> roleManager, ApplicationDbContext context,
+            IHubContext<AppointmentHub> hubContext
+            )
         {
             _userManager = userManager;
             _roleManager = roleManager;
             _DbContext = context;
+            _hubContext = hubContext;
         }
 
-        public async Task<IActionResult> Appointment()
+        
+
+       public async Task<IActionResult> Appointment(int pageIndex = 1) // Accept a page number
         {
             var user = await _userManager.GetUserAsync(User);
             if (user == null)
@@ -31,12 +40,26 @@ namespace ImperioCalaveraMVC.Controllers
                 return RedirectToAction("Index", "Auth");
             }
 
-            // Change the query to get a LIST, not just one
-            var citas = await _DbContext.Citas
-                .Where(c => c.ClienteId == user.Id)
+            var pageSize = 10; // Show 10 appointments per page
+
+            // 1. Start with the base query (same as before)
+            IQueryable<Cita> query = _DbContext.Citas.AsQueryable();
+
+            // 2. Apply role-based filter (same as before)
+            if (User.IsInRole("Admin")) { /* No filter */ }
+            else if (User.IsInRole("Barbero")) { query = query.Where(c => c.BarberoId == user.Id); }
+            else { query = query.Where(c => c.ClienteId == user.Id); }
+
+            // 3. Get the TOTAL count of matching appointments BEFORE pagination
+            var totalCount = await query.CountAsync();
+
+            // 4. Apply sorting AND pagination to the query
+            var citasForPage = await query
                 .OrderBy(c => c.Estado == EstadoCita.Finalizada || c.Estado == EstadoCita.Cancelada)
                 .ThenBy(c => c.FechaHora)
-                .Select(c => new AppointmentCardViewModel // Project directly into the ViewModel
+                .Skip((pageIndex - 1) * pageSize) // Skip the records of previous pages
+                .Take(pageSize)                   // Take only the records for the current page
+                .Select(c => new AppointmentCardViewModel
                 {
                     CitaId = c.CitaId,
                     FechaHora = c.FechaHora,
@@ -49,12 +72,18 @@ namespace ImperioCalaveraMVC.Controllers
                     WalkInCustomerPhone = c.WalkInCustomerPhone,
                     WalkInCustomerNotes = c.WalkInCustomerNotes
                 })
-                .ToListAsync(); // <-- Change to ToListAsync()
+                .ToListAsync();
 
-            // Pass the list to the view. The view will handle the "no appointments" message.
-            return View(citas);
+            // 5. Create the final model to send to the view
+            var paginatedModel = new PaginatedAppointmentsViewModel
+            {
+                Appointments = citasForPage,
+                PageIndex = pageIndex,
+                TotalPages = (int)Math.Ceiling(totalCount / (double)pageSize)
+            };
+
+            return View(paginatedModel);
         }
-
 
         [Authorize] // Ensure only logged-in users can see slots
         [HttpGet]
@@ -190,6 +219,39 @@ namespace ImperioCalaveraMVC.Controllers
             _DbContext.Citas.Add(newAppointment);
             await _DbContext.SaveChangesAsync();
 
+
+            // --- START OF NEW REAL-TIME LOGIC ---
+
+            // 6. Broadcast the new appointment card to relevant users
+            // First, create the ViewModel for the card we want to send
+            var newAppointmentCard = new AppointmentCardViewModel
+            {
+                CitaId = newAppointment.CitaId,
+                FechaHora = newAppointment.FechaHora,
+                ClienteName = user.Nombre, // The name of the person who booked
+                ClientePhone = user.PhoneNumber,
+                ClienteTelEmergencia = user.TelefonoEmergencia,
+                BarberoName = leastBookedBarber.Barber.Nombre,
+                Estado = newAppointment.Estado,
+                WalkInCustomerName = newAppointment.WalkInCustomerName,
+                WalkInCustomerPhone = newAppointment.WalkInCustomerPhone,
+                WalkInCustomerNotes = newAppointment.WalkInCustomerNotes
+            };
+
+            // Next, get a list of all user IDs that need to see this new card
+            var adminUsers = await _userManager.GetUsersInRoleAsync("Admin");
+            var userIdsToNotify = adminUsers.Select(a => a.Id).ToList();
+            userIdsToNotify.Add(newAppointment.ClienteId); // Add the client
+            userIdsToNotify.Add(newAppointment.BarberoId); // Add the barber
+
+            // Finally, send the new card data only to those specific users
+            await _hubContext.Clients.Users(userIdsToNotify.Distinct()).SendAsync("AddNewAppointmentCard", newAppointmentCard);
+
+            // --- END OF NEW REAL-TIME LOGIC ---
+
+            // Broadcast that this specific time slot on this date is now taken.
+            await _hubContext.Clients.All.SendAsync("SlotBooked", model.Date, model.Time);
+
             successMessage = successMessage.Replace("!", $" con {leastBookedBarber.Barber.Nombre}!");
 
             return Json(new { success = true, message = successMessage });
@@ -214,11 +276,11 @@ namespace ImperioCalaveraMVC.Controllers
                 return NotFound(new { success = false, message = "Cita no encontrada." });
             }
 
-            // 3. IMPORTANT SECURITY CHECK:
-            // Ensure the user canceling the appointment is the one who created it.
-            if (appointment.ClienteId != user.Id)
+            // 3. UPDATED SECURITY CHECK:
+            // An Admin can cancel any appointment. Other users can only cancel their own.
+            if (!User.IsInRole("Admin") && appointment.ClienteId != user.Id)
             {
-                // This is an unauthorized attempt!
+                // This is an unauthorized attempt for a non-admin user!
                 return Forbid();
             }
 
@@ -232,8 +294,21 @@ namespace ImperioCalaveraMVC.Controllers
             appointment.Estado = EstadoCita.Cancelada;
             await _DbContext.SaveChangesAsync();
 
-            return Json(new { success = true, message = "Tu cita ha sido cancelada exitosamente." });
+            // --- START OF NEW CODE ---
+            // 6. Broadcast the status update to all connected clients
+            await _hubContext.Clients.All.SendAsync("ReceiveStatusUpdate", appointment.CitaId, EstadoCita.Cancelada.ToString());
+            // --- END OF NEW CODE ---
+
+
+
+            // Customize the success message if an admin is canceling someone else's appointment
+            string message = (user.Id == appointment.ClienteId)
+                ? "Tu cita ha sido cancelada exitosamente."
+                : "La cita ha sido cancelada exitosamente por el administrador.";
+
+            return Json(new { success = true, message = message });
         }
+
 
     }
 

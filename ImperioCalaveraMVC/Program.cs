@@ -1,6 +1,8 @@
 using ImperioCalaveraMVC.Data;
+using ImperioCalaveraMVC.Hubs;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
+using System.Text.Json.Serialization;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -37,6 +39,15 @@ builder.Services.ConfigureApplicationCookie(options =>
 
 builder.Services.AddControllersWithViews();
 
+// The new, correct way
+builder.Services.AddSignalR(); // 1. SignalR call is simple again
+
+// REEMPLAZA tu línea de AddSignalR() con ESTA:
+builder.Services.AddSignalR().AddJsonProtocol(options =>
+{
+    // Esto le dice DIRECTAMENTE a SignalR que convierta los enums a texto
+    options.PayloadSerializerOptions.Converters.Add(new JsonStringEnumConverter());
+});
 
 var app = builder.Build();
 
@@ -91,5 +102,9 @@ using (var scope = app.Services.CreateScope())
     //     }
     // }
 }
+
+
+app.MapHub<AppointmentHub>("/appointmentHub"); // <-- ADD THIS LINE before app.Run()
+
 
 app.Run();
