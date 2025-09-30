@@ -32,7 +32,7 @@ namespace ImperioCalaveraMVC.Controllers
 
         
 
-       public async Task<IActionResult> Appointment(int pageIndex = 1) // Accept a page number
+       public async Task<IActionResult> Appointment(int pageIndex = 1, string tab = "agendar") // Accept a page number
         {
             var user = await _userManager.GetUserAsync(User);
             if (user == null)
@@ -41,6 +41,9 @@ namespace ImperioCalaveraMVC.Controllers
             }
 
             var pageSize = 10; // Show 10 appointments per page
+
+            // 2. Guarda la pestaña activa para que la vista pueda usarla
+            ViewData["ActiveTab"] = tab;
 
             // 1. Start with the base query (same as before)
             IQueryable<Cita> query = _DbContext.Citas.AsQueryable();
@@ -84,6 +87,61 @@ namespace ImperioCalaveraMVC.Controllers
 
             return View(paginatedModel);
         }
+
+
+        // En AppointmentsController.cs
+
+        [HttpGet] // Esta acción es solo para peticiones GET
+        public async Task<IActionResult> _GetAppointmentsPage(int pageIndex = 1)
+        {
+            var user = await _userManager.GetUserAsync(User);
+            if (user == null)
+            {
+                // Para peticiones AJAX, es mejor devolver un error que redirigir
+                return Unauthorized();
+            }
+
+            var pageSize = 10;
+            IQueryable<Cita> query = _DbContext.Citas.AsQueryable();
+
+            // Aplica los mismos filtros de rol que ya tienes
+            if (User.IsInRole("Admin")) { /* No hay filtro */ }
+            else if (User.IsInRole("Barbero")) { query = query.Where(c => c.BarberoId == user.Id); }
+            else { query = query.Where(c => c.ClienteId == user.Id); }
+
+            var totalCount = await query.CountAsync();
+            var citasForPage = await query
+                .OrderBy(c => c.Estado == EstadoCita.Finalizada || c.Estado == EstadoCita.Cancelada)
+                .ThenBy(c => c.FechaHora)
+                .Skip((pageIndex - 1) * pageSize)
+                .Take(pageSize)
+                .Select(c => new AppointmentCardViewModel
+                {
+                    // Todas tus propiedades aquí (CitaId, ClienteName, BarberoName, etc.)
+                    CitaId = c.CitaId,
+                    FechaHora = c.FechaHora,
+                    ClienteName = c.Cliente.Nombre,
+                    ClientePhone = c.Cliente.PhoneNumber,
+                    ClienteTelEmergencia = c.Cliente.TelefonoEmergencia,
+                    BarberoName = c.Barbero.Nombre,
+                    Estado = c.Estado,
+                    WalkInCustomerName = c.WalkInCustomerName,
+                    WalkInCustomerPhone = c.WalkInCustomerPhone,
+                    WalkInCustomerNotes = c.WalkInCustomerNotes
+                })
+                .ToListAsync();
+
+            var paginatedModel = new PaginatedAppointmentsViewModel
+            {
+                Appointments = citasForPage,
+                PageIndex = pageIndex,
+                TotalPages = (int)Math.Ceiling(totalCount / (double)pageSize)
+            };
+
+            // La diferencia clave: devuelve una PartialView, no una View completa
+            return PartialView("_AppointmentsListPartial", paginatedModel);
+        }
+
 
         [Authorize] // Ensure only logged-in users can see slots
         [HttpGet]

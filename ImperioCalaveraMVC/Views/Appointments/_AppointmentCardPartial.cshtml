@@ -1,0 +1,107 @@
+﻿@model AppointmentCardViewModel
+@using static ImperioCalaveraMVC.Models.Enums.Enums
+
+@* --- Comprueba el rol del usuario para decidir qué tarjeta mostrar --- *@
+@if (User.IsInRole("Admin") || User.IsInRole("Barbero"))
+{
+    @* === TARJETA PARA ADMINS Y BARBEROS === *@
+    <div class="card shadow-sm mb-3" id="cita-card-@Model.CitaId" style="max-width: 540px; margin: auto;">
+        <div class="row g-0">
+            <div class="col-md-4 d-flex justify-content-center align-items-center bg-secondary text-white p-3 rounded-start">
+                <div class="text-center">
+                    <h5 class="card-title mb-0">@Model.FechaHora.ToString("MMM")</h5>
+                    <h1 class="display-4 mb-0" style="font-weight: 600;">@Model.FechaHora.ToString("dd")</h1>
+                    <h6 class="card-title mb-0">@Model.FechaHora.ToString("t")</h6>
+                </div>
+            </div>
+            <div class="col-md-8">
+                <div class="card-body">
+                    <h5 class="card-title">Detalles de la Cita</h5>
+                    <hr class="my-2">
+                    <h6 class="card-subtitle mb-2 text-muted">Cliente</h6>
+                    @if (!string.IsNullOrEmpty(Model.WalkInCustomerName))
+                    {
+                        <p class="card-text mb-1"><strong>Nombre:</strong> @Model.WalkInCustomerName (Walk-In)</p>
+                        <p class="card-text mb-1"><strong>Teléfono:</strong> @Model.WalkInCustomerPhone</p>
+                    }
+                    else
+                    {
+                        <p class="card-text mb-1"><strong>Nombre:</strong> @Model.ClienteName</p>
+                        <p class="card-text mb-1"><strong>Teléfono:</strong> @Model.ClientePhone</p>
+                        <p class="card-text mb-1"><strong>Tel. Emergencia:</strong> @Model.ClienteTelEmergencia</p>
+                    }
+                    @if (!string.IsNullOrEmpty(Model.WalkInCustomerNotes))
+                    {
+                        <p class="card-text mb-1"><strong>Notas:</strong> @Model.WalkInCustomerNotes</p>
+                    }
+                    <hr class="my-2">
+                    @if (User.IsInRole("Admin"))
+                    {
+                        <h6 class="card-subtitle mb-2 text-muted">Barbero</h6>
+                        <p class="card-text mb-1"><strong>Nombre:</strong> @Model.BarberoName</p>
+                        <hr class="my-2">
+                    }
+                    @{
+                        var badgeClass = Model.Estado == EstadoCita.Iniciada ? "bg-success" :
+                        Model.Estado == EstadoCita.Pendiente ? "bg-primary" :
+                        Model.Estado == EstadoCita.Cancelada ? "bg-danger" : "bg-secondary";
+                    }
+                    <p class="card-text mb-2">
+                        <strong>Estado:</strong> <span class="badge @badgeClass">@Model.Estado</span>
+                    </p>
+                    <div class="buttonsContainer d-flex gap-2">
+                        @if (Model.Estado == EstadoCita.Pendiente)
+                        {
+                            <button class="btn btn-sm btn-success">Iniciar Cita</button>
+                            <button class="btn btn-sm btn-outline-danger btn-cancel-appointment" data-cita-id="@Model.CitaId">Cancelar</button>
+                        }
+                        @if (Model.Estado == EstadoCita.Iniciada)
+                        {
+                            <button class="btn btn-sm btn-primary">Finalizar Cita</button>
+                        }
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+else
+{
+    @* === TARJETA PARA CLIENTES NORMALES === *@
+    <div class="card shadow-sm mb-3" id="cita-card-@Model.CitaId" style="max-width: 540px; margin: auto;">
+        <div class="row g-0">
+            <div class="col-md-4 d-flex justify-content-center align-items-center bg-dark text-white p-3 rounded-start">
+                <div class="text-center">
+                    <h5 class="card-title mb-0">@Model.FechaHora.ToString("MMM")</h5>
+                    <h1 class="display-4 mb-0" style="font-weight: 600;">@Model.FechaHora.ToString("dd")</h1>
+                    <h6 class="card-title mb-0">@Model.FechaHora.ToString("yyyy")</h6>
+                </div>
+            </div>
+            <div class="col-md-8">
+                <div class="card-body">
+                    <h5 class="card-title">Tu Cita Agendada</h5>
+                    <p class="card-text mb-1"><strong>Barbero:</strong> @Model.BarberoName</p>
+                    <p class="card-text mb-1"><strong>Hora:</strong> @Model.FechaHora.ToString("t")</p>
+                    <hr class="my-2">
+                    <h6 class="card-subtitle mb-2 text-muted">Detalles del Cliente</h6>
+                    <p class="card-text mb-1"><strong>Nombre:</strong> @Model.ClienteName</p>
+                    <hr class="my-2">
+                    @{
+                        var badgeClassClient = Model.Estado == EstadoCita.Iniciada ? "bg-success" :
+                        Model.Estado == EstadoCita.Pendiente ? "bg-primary" :
+                        Model.Estado == EstadoCita.Cancelada ? "bg-danger" : "bg-secondary";
+                    }
+                    <p class="card-text mb-2"><strong>Estado:</strong> <span class="badge @badgeClassClient">@Model.Estado</span></p>
+                    @if (Model.Estado == EstadoCita.Pendiente)
+                    {
+                        <button class="btn btn-sm btn-outline-danger btn-cancel-appointment" data-cita-id="@Model.CitaId">
+                            Cancelar Cita
+                        </button>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+}
+@{
+}

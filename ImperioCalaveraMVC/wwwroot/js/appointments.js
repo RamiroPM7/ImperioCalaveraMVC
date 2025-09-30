@@ -5,6 +5,13 @@ import interactionPlugin from '@fullcalendar/interaction';
 import esLocale from '@fullcalendar/core/locales/es';
 
 document.addEventListener('DOMContentLoaded', () => {
+
+
+
+    //Obtenemos las referencias a los botones y contenedores
+    const tableBody = document.getElementById('appointments-table-body');
+    const btnViewCards = document.getElementById('btn-view-cards');
+
     // State variables
     let selectedDayElement = null;
     let selectedDateStr = '';
@@ -17,17 +24,16 @@ document.addEventListener('DOMContentLoaded', () => {
 
     if (!calendarEl) return;
 
-    // --- START OF SIGNALR SETUP --- 🚀
-    // 1. Establish the connection to the hub
+   
+    //Establish the connection to the hub
     const connection = new signalR.HubConnectionBuilder()
         .withUrl("/appointmentHub") // This must match the endpoint in Program.cs
         .build();
 
-    // 2. Define what happens when a "SlotBooked" message comes from the server
+    //Define what happens when a "SlotBooked" message comes from the server
     connection.on("SlotBooked", (date, time) => {
         // Check if the update is for the day the user is currently viewing
         if (selectedDateStr === date) {
-            console.log(`Slot ${time} on ${date} was booked by another user. Removing from view.`);
             const buttonToRemove = document.querySelector(`.time-slot-btn[data-time="${time}"]`);
             if (buttonToRemove) {
                 buttonToRemove.remove();
@@ -56,16 +62,90 @@ document.addEventListener('DOMContentLoaded', () => {
         return ''; // No hay botones si está finalizada o cancelada
     }
 
+    function getClientActionButton(cita) {
+        if (cita.estado === 'Pendiente') {
+            return `<button class="btn btn-sm btn-outline-danger btn-cancel-appointment" data-cita-id="${cita.citaId}">Cancelar Cita</button>`;
+        }
+        return '';
+    }
+
+    //Función para rellenar la tabla con los datos de las citas
+    function populateTable(appointments) {
+        if (!tableBody) return;
+        tableBody.innerHTML = ''; // Limpiar la tabla
+
+        if (appointments.length === 0) {
+            const colCount = (window.currentUserRole === 'Barbero') ? 5 : 6;
+            tableBody.innerHTML = `<tr><td colspan="${colCount}" class="text-center text-muted">No tienes citas agendadas.</td></tr>`;
+            return;
+        }
+
+        appointments.forEach(cita => {
+            const fecha = new Date(cita.fechaHora);
+            const fechaStr = fecha.toLocaleDateString('es-MX', { day: '2-digit', month: 'short', year: 'numeric' });
+            const horaStr = fecha.toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' });
+
+            const badgeClass = getBadgeClass(cita.estado);
+            const actionButtons = (window.currentUserRole === 'Admin' || window.currentUserRole === 'Barbero')
+                ? getActionButtons(cita)
+                : getClientActionButton(cita);
+
+            let rowHtml = `
+                <tr>
+                    <td>${fechaStr}</td>
+                    <td>${horaStr}</td>
+            `;
+
+            if (window.currentUserRole === 'Admin' || window.currentUserRole === 'Barbero') {
+                const clientName = cita.walkInCustomerName ? `${cita.walkInCustomerName} (Walk-In)` : cita.clienteName;
+                rowHtml += `<td>${clientName}</td>`;
+            }
+
+            if (window.currentUserRole !== 'Barbero') {
+                rowHtml += `<td>${cita.barberoName}</td>`;
+            }
+
+            rowHtml += `
+                    <td><span class="badge ${badgeClass}">${cita.estado}</span></td>
+                    <td><div class="d-flex gap-2">${actionButtons}</div></td>
+                </tr>
+            `;
+
+            tableBody.insertAdjacentHTML('beforeend', rowHtml);
+        });
+    }
 
 
+    //Función para establecer la vista activa (tarjetas o tabla)
+    function setView(viewToShow) {
+        // Volvemos a encontrar los elementos CADA VEZ que se llama a la función.
+        // Esto asegura que siempre trabajamos con los elementos que están en la página.
+        const cardsContainer = document.getElementById('cards-container');
+        const tableContainer = document.getElementById('table-container');
+        const btnViewCards = document.getElementById('btn-view-cards');
+        const btnViewTable = document.getElementById('btn-view-table');
 
+        // Si los elementos no existen (por si acaso), no hacemos nada.
+        if (!cardsContainer || !tableContainer || !btnViewCards || !btnViewTable) return;
 
+        // El resto de la lógica es la misma que ya tenías
+        if (viewToShow === 'table') {
+            cardsContainer.style.display = 'none';
+            tableContainer.style.display = 'block';
+            btnViewTable.classList.replace('btn-outline-primary', 'btn-primary');
+            btnViewCards.classList.replace('btn-primary', 'btn-outline-primary');
+        } else {
+            cardsContainer.style.display = 'block';
+            tableContainer.style.display = 'none';
+            btnViewCards.classList.replace('btn-outline-primary', 'btn-primary');
+            btnViewTable.classList.replace('btn-primary', 'btn-outline-primary');
+        }
+        localStorage.setItem('appointmentView', viewToShow);
+    }
 
-    // In appointments.js, replace the entire connection.on("AddNewAppointmentCard", ...) function with this:
 
     connection.on("AddNewAppointmentCard", (cita) => {
-        console.log("New appointment card received for role:", window.currentUserRole);
-
+       
         const appointmentsContainer = document.getElementById('my-appointments-container');
         const noAppointmentsMessage = appointmentsContainer.querySelector('.alert');
         if (noAppointmentsMessage) {
@@ -202,12 +282,11 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
 
-
-    // 4. Start the connection
+    //Start the connection
     connection.start().then(() => {
         console.log("SignalR Connected.");
     }).catch(err => console.error("SignalR Connection Error: ", err.toString()));
-    // --- END OF SIGNALR SETUP ---
+    
 
     // Function to fetch and display time slots
     async function fetchAndDisplaySlots(dateStr) {
@@ -276,6 +355,25 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
 
+    // Este bloque ahora se encarga de la inicialización Y de los botones estáticos.
+    if (btnViewCards) {
+        const btnViewTable = document.getElementById('btn-view-table');
+
+        // Asignamos la funcionalidad directamente a los botones
+        btnViewCards.addEventListener('click', () => setView('cards'));
+        btnViewTable.addEventListener('click', () => setView('table'));
+
+        // Rellena la tabla con los datos iniciales
+        populateTable(window.appointmentsData);
+
+        // Comprueba si hay una vista guardada y la aplica
+        const savedView = localStorage.getItem('appointmentView');
+        if (savedView) {
+            setView(savedView);
+        }
+    }
+
+
     // Final booking button click (now simpler)
     bookingButton.addEventListener('click', async () => {
 
@@ -336,38 +434,114 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    // --- Event Listener for Canceling Appointments (UPDATED for SignalR) ---
+
+    // AÑADE ESTE BLOQUE PARA LA INICIALIZACIÓN DE LA VISTA
+    // Este código se ejecuta solo una vez, cuando la página carga.
+    const myAppointmentsContainer = document.getElementById('my-appointments-container');
+    if (myAppointmentsContainer) {
+        // Rellena la tabla con los datos iniciales que vienen del servidor
+        populateTable(window.appointmentsData);
+
+        // Comprueba si hay una vista guardada y aplícala
+        const savedView = localStorage.getItem('appointmentView');
+        if (savedView) {
+            setView(savedView);
+        }
+    }
+
+
+    // 2. AÑADE (O UNIFICA) ESTE "SUPER-ESCUCHA" PARA TODOS LOS CLICS
     document.addEventListener('click', async (event) => {
-        if (event.target.classList.contains('btn-cancel-appointment')) {
 
-            const citaId = event.target.dataset.citaId;
+        // --- Lógica para la paginación con AJAX ---
+        const paginationLink = event.target.closest('.pagination a');
+        if (paginationLink) {
+            // 1. Previene la recarga completa de la página
+            event.preventDefault();
 
-            if (!confirm('¿Estás seguro de que quieres cancelar esta cita? Esta acción no se puede deshacer.')) {
+            const url = paginationLink.getAttribute('href');
+            if (!url) return;
+
+            // El contenedor principal que vamos a actualizar
+            const container = document.getElementById('my-appointments-container');
+
+            // 2. Muestra un indicador de carga para que el usuario sepa que algo está pasando
+            container.innerHTML = '<div class="text-center p-5"><div class="spinner-border" role="status"><span class="visually-hidden">Cargando...</span></div></div>';
+
+            // 3. Usa fetch para pedir solo el nuevo contenido al servidor
+            fetch(url)
+                .then(response => {
+                    if (!response.ok) {
+                        // Maneja errores si el servidor responde con un error (ej. 404, 500)
+                        throw new Error(`Error en la red: ${response.statusText}`);
+                    }
+                    return response.text();
+                })
+                .then(html => {
+                    // Reemplaza el contenido viejo con el nuevo HTML que recibimos
+                    container.innerHTML = html;
+
+                    // Actualiza la URL en la barra del navegador sin recargar la página
+                    window.history.pushState({}, '', url);
+
+                    populateTable(window.appointmentsData); 
+
+                    // Vuelve a aplicar la vista de tabla/tarjetas que el usuario tenía guardada
+                    const savedView = localStorage.getItem('appointmentView');
+                    if (savedView) {
+                        // La función setView se encargará de mostrar la vista correcta
+                        // y de ajustar los botones, ya que el HTML es nuevo.
+                        setView(savedView);
+                    }
+                })
+                .catch(error => {
+                    console.error('Error al cargar la nueva página:', error);
+                    container.innerHTML = '<div class="alert alert-danger">Error al cargar la página de citas.</div>';
+                });
+        }
+
+        // --- Lógica para cancelar una cita ---
+        const cancelButton = event.target.closest('.btn-cancel-appointment');
+        if (cancelButton) {
+            // 1. Prevenimos cualquier otro comportamiento por defecto del botón
+            event.preventDefault();
+
+            // 2. Obtenemos el ID de la cita desde el atributo data del botón
+            const citaId = cancelButton.dataset.citaId;
+            if (!citaId) return;
+
+            // 3. Pedimos confirmación al usuario antes de proceder
+            if (!confirm('¿Estás seguro de que quieres cancelar esta cita?')) {
                 return;
             }
 
+            // 4. Usamos fetch para enviar la solicitud de cancelación al servidor
             try {
                 const response = await fetch(`/Appointments/CancelAppointment/${citaId}`, {
                     method: 'DELETE',
                 });
 
-                // This is now much simpler
                 if (response.ok) {
-                    // SUCCESS! We don't need to do anything here.
-                    // SignalR will broadcast the change, and our "ReceiveStatusUpdate"
-                    // listener will automatically update the card for us and everyone else.
+                    // Éxito. La solicitud se procesó correctamente.
+                    // No necesitamos hacer nada para actualizar la vista aquí.
+                    // SignalR transmitirá el cambio y nuestro receptor "ReceiveStatusUpdate"
+                    // se encargará de actualizar la tarjeta para todos, incluyéndonos.
                     const result = await response.json();
-                   // console.log(result.message); // Log success message for debugging
+                    console.log(result.message); // Opcional: muestra el mensaje de éxito en la consola
                 } else {
-                    // Handle errors like 403 (Forbidden), 404 (Not Found), etc.
-                    alert(`Error al cancelar: ${response.status} ${response.statusText}`);
+                    // Maneja errores si el servidor responde con un error (ej. 403, 404)
+                    alert(`Error al cancelar la cita: ${response.status} ${response.statusText}`);
                 }
-
             } catch (error) {
-               // console.error('Error canceling appointment:', error);
+                console.error('Error de red al cancelar la cita:', error);
                 alert('Hubo un error de conexión al intentar cancelar la cita.');
             }
         }
+
+
+
+
     });
+
 
 });

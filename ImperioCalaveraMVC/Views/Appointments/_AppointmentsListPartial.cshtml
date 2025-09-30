@@ -1,0 +1,77 @@
+﻿@model PaginatedAppointmentsViewModel
+@using System.Text.Json
+@using static ImperioCalaveraMVC.Models.Enums.Enums
+
+
+<script>
+    window.appointmentsData = @Html.Raw(Json.Serialize(Model.Appointments));
+</script>
+
+<!--Cards-->
+<div id="cards-container">
+    @if (!Model.Appointments.Any())
+    {
+        <div class="alert alert-warning text-center">
+            <strong>No tienes citas agendadas.</strong>
+        </div>
+    }
+    else
+    {
+        @foreach (var cita in Model.Appointments)
+        {
+            <partial name="_AppointmentCardPartial" model="cita" />
+        }
+    }
+</div>
+
+
+<!-- Table -->
+<div id="table-container" style="display: none;">
+    <div class="table-responsive">
+        <table class="table table-striped table-hover">
+            <thead>
+                <tr>
+                    <th scope="col">Fecha</th>
+                    <th scope="col">Hora</th>
+
+                    @if (User.IsInRole("Admin") || User.IsInRole("Barbero"))
+                    {
+                        <th scope="col">Cliente</th>
+                    }
+
+                    @if (User.IsInRole("Admin") || !User.IsInRole("Barbero"))
+                    {
+                        <th scope="col">Barbero</th>
+                    }
+
+                    <th scope="col">Estado</th>
+                    <th scope="col">Acciones</th>
+                </tr>
+            </thead>
+            <tbody id="appointments-table-body">
+            </tbody>
+        </table>
+    </div>
+</div>
+
+
+<nav aria-label="Page navigation" class="mt-4">
+    <ul class="pagination justify-content-center">
+
+        <li class="page-item @(Model.HasPreviousPage ? "" : "disabled")">
+            <a class="page-link" asp-action="_GetAppointmentsPage" asp-route-pageIndex="@(Model.PageIndex - 1)" asp-route-tab="citas">Anterior</a>
+        </li>
+
+        @for (var i = 1; i <= Model.TotalPages; i++)
+        {
+            <li class="page-item @(i == Model.PageIndex ? "active" : "")">
+                <a class="page-link" asp-action="_GetAppointmentsPage" asp-route-pageIndex="@i" asp-route-tab="citas">@i</a>
+            </li>
+        }
+
+        <li class="page-item @(Model.HasNextPage ? "" : "disabled")">
+            <a class="page-link" asp-action="_GetAppointmentsPage" asp-route-pageIndex="@(Model.PageIndex + 1)" asp-route-tab="citas">Siguiente</a>
+        </li>
+
+    </ul>
+</nav>

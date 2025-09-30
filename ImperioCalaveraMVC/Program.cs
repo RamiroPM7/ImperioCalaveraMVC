@@ -37,17 +37,22 @@ builder.Services.ConfigureApplicationCookie(options =>
     options.Cookie.SecurePolicy = CookieSecurePolicy.Always; // Para HTTPS. En HTTP dev, usa .SameAsRequest.
 });
 
-builder.Services.AddControllersWithViews();
 
-// The new, correct way
-builder.Services.AddSignalR(); // 1. SignalR call is simple again
 
-// REEMPLAZA tu línea de AddSignalR() con ESTA:
+// NECESITAS ESTO (CORRECTO):
+
+// Configura los controladores Y las opciones de JSON en una sola llamada
+builder.Services.AddControllersWithViews().AddJsonOptions(options =>
+{
+    options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter());
+});
+
+// Configura SignalR Y sus opciones de JSON en una sola llamada
 builder.Services.AddSignalR().AddJsonProtocol(options =>
 {
-    // Esto le dice DIRECTAMENTE a SignalR que convierta los enums a texto
     options.PayloadSerializerOptions.Converters.Add(new JsonStringEnumConverter());
 });
+
 
 var app = builder.Build();
 

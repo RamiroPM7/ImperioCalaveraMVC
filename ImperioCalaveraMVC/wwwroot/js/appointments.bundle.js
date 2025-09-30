@@ -13547,6 +13547,10 @@ function _asyncToGenerator(n) { return function () { var t = this, e = arguments
 
 
 document.addEventListener('DOMContentLoaded', function () {
+  //Obtenemos las referencias a los botones y contenedores
+  var tableBody = document.getElementById('appointments-table-body');
+  var btnViewCards = document.getElementById('btn-view-cards');
+
   // State variables
   var selectedDayElement = null;
   var selectedDateStr = '';
@@ -13558,16 +13562,14 @@ document.addEventListener('DOMContentLoaded', function () {
   var bookingButton = document.getElementById('agendar-cita-btn');
   if (!calendarEl) return;
 
-  // --- START OF SIGNALR SETUP --- 🚀
-  // 1. Establish the connection to the hub
+  //Establish the connection to the hub
   var connection = new signalR.HubConnectionBuilder().withUrl("/appointmentHub") // This must match the endpoint in Program.cs
   .build();
 
-  // 2. Define what happens when a "SlotBooked" message comes from the server
+  //Define what happens when a "SlotBooked" message comes from the server
   connection.on("SlotBooked", function (date, time) {
     // Check if the update is for the day the user is currently viewing
     if (selectedDateStr === date) {
-      console.log("Slot ".concat(time, " on ").concat(date, " was booked by another user. Removing from view."));
       var buttonToRemove = document.querySelector(".time-slot-btn[data-time=\"".concat(time, "\"]"));
       if (buttonToRemove) {
         buttonToRemove.remove();
@@ -13590,11 +13592,76 @@ document.addEventListener('DOMContentLoaded', function () {
     }
     return ''; // No hay botones si está finalizada o cancelada
   }
+  function getClientActionButton(cita) {
+    if (cita.estado === 'Pendiente') {
+      return "<button class=\"btn btn-sm btn-outline-danger btn-cancel-appointment\" data-cita-id=\"".concat(cita.citaId, "\">Cancelar Cita</button>");
+    }
+    return '';
+  }
 
-  // In appointments.js, replace the entire connection.on("AddNewAppointmentCard", ...) function with this:
+  //Función para rellenar la tabla con los datos de las citas
+  function populateTable(appointments) {
+    if (!tableBody) return;
+    tableBody.innerHTML = ''; // Limpiar la tabla
 
+    if (appointments.length === 0) {
+      var colCount = window.currentUserRole === 'Barbero' ? 5 : 6;
+      tableBody.innerHTML = "<tr><td colspan=\"".concat(colCount, "\" class=\"text-center text-muted\">No tienes citas agendadas.</td></tr>");
+      return;
+    }
+    appointments.forEach(function (cita) {
+      var fecha = new Date(cita.fechaHora);
+      var fechaStr = fecha.toLocaleDateString('es-MX', {
+        day: '2-digit',
+        month: 'short',
+        year: 'numeric'
+      });
+      var horaStr = fecha.toLocaleTimeString('es-MX', {
+        hour: '2-digit',
+        minute: '2-digit'
+      });
+      var badgeClass = getBadgeClass(cita.estado);
+      var actionButtons = window.currentUserRole === 'Admin' || window.currentUserRole === 'Barbero' ? getActionButtons(cita) : getClientActionButton(cita);
+      var rowHtml = "\n                <tr>\n                    <td>".concat(fechaStr, "</td>\n                    <td>").concat(horaStr, "</td>\n            ");
+      if (window.currentUserRole === 'Admin' || window.currentUserRole === 'Barbero') {
+        var clientName = cita.walkInCustomerName ? "".concat(cita.walkInCustomerName, " (Walk-In)") : cita.clienteName;
+        rowHtml += "<td>".concat(clientName, "</td>");
+      }
+      if (window.currentUserRole !== 'Barbero') {
+        rowHtml += "<td>".concat(cita.barberoName, "</td>");
+      }
+      rowHtml += "\n                    <td><span class=\"badge ".concat(badgeClass, "\">").concat(cita.estado, "</span></td>\n                    <td><div class=\"d-flex gap-2\">").concat(actionButtons, "</div></td>\n                </tr>\n            ");
+      tableBody.insertAdjacentHTML('beforeend', rowHtml);
+    });
+  }
+
+  //Función para establecer la vista activa (tarjetas o tabla)
+  function setView(viewToShow) {
+    // Volvemos a encontrar los elementos CADA VEZ que se llama a la función.
+    // Esto asegura que siempre trabajamos con los elementos que están en la página.
+    var cardsContainer = document.getElementById('cards-container');
+    var tableContainer = document.getElementById('table-container');
+    var btnViewCards = document.getElementById('btn-view-cards');
+    var btnViewTable = document.getElementById('btn-view-table');
+
+    // Si los elementos no existen (por si acaso), no hacemos nada.
+    if (!cardsContainer || !tableContainer || !btnViewCards || !btnViewTable) return;
+
+    // El resto de la lógica es la misma que ya tenías
+    if (viewToShow === 'table') {
+      cardsContainer.style.display = 'none';
+      tableContainer.style.display = 'block';
+      btnViewTable.classList.replace('btn-outline-primary', 'btn-primary');
+      btnViewCards.classList.replace('btn-primary', 'btn-outline-primary');
+    } else {
+      cardsContainer.style.display = 'block';
+      tableContainer.style.display = 'none';
+      btnViewCards.classList.replace('btn-outline-primary', 'btn-primary');
+      btnViewTable.classList.replace('btn-primary', 'btn-outline-primary');
+    }
+    localStorage.setItem('appointmentView', viewToShow);
+  }
   connection.on("AddNewAppointmentCard", function (cita) {
-    console.log("New appointment card received for role:", window.currentUserRole);
     var appointmentsContainer = document.getElementById('my-appointments-container');
     var noAppointmentsMessage = appointmentsContainer.querySelector('.alert');
     if (noAppointmentsMessage) {
@@ -13667,13 +13734,12 @@ document.addEventListener('DOMContentLoaded', function () {
     }
   });
 
-  // 4. Start the connection
+  //Start the connection
   connection.start().then(function () {
     console.log("SignalR Connected.");
   })["catch"](function (err) {
     return console.error("SignalR Connection Error: ", err.toString());
   });
-  // --- END OF SIGNALR SETUP ---
 
   // Function to fetch and display time slots
   function fetchAndDisplaySlots(_x) {
@@ -13763,6 +13829,28 @@ document.addEventListener('DOMContentLoaded', function () {
       selectedTime = event.target.dataset.time;
     }
   });
+
+  // Este bloque ahora se encarga de la inicialización Y de los botones estáticos.
+  if (btnViewCards) {
+    var btnViewTable = document.getElementById('btn-view-table');
+
+    // Asignamos la funcionalidad directamente a los botones
+    btnViewCards.addEventListener('click', function () {
+      return setView('cards');
+    });
+    btnViewTable.addEventListener('click', function () {
+      return setView('table');
+    });
+
+    // Rellena la tabla con los datos iniciales
+    populateTable(window.appointmentsData);
+
+    // Comprueba si hay una vista guardada y la aplica
+    var savedView = localStorage.getItem('appointmentView');
+    if (savedView) {
+      setView(savedView);
+    }
+  }
 
   // Final booking button click (now simpler)
   bookingButton.addEventListener('click', /*#__PURE__*/_asyncToGenerator(/*#__PURE__*/_regenerator().m(function _callee() {
@@ -13854,56 +13942,129 @@ document.addEventListener('DOMContentLoaded', function () {
     }, _callee, null, [[4, 11]]);
   })));
 
-  // --- Event Listener for Canceling Appointments (UPDATED for SignalR) ---
+  // AÑADE ESTE BLOQUE PARA LA INICIALIZACIÓN DE LA VISTA
+  // Este código se ejecuta solo una vez, cuando la página carga.
+  var myAppointmentsContainer = document.getElementById('my-appointments-container');
+  if (myAppointmentsContainer) {
+    // Rellena la tabla con los datos iniciales que vienen del servidor
+    populateTable(window.appointmentsData);
+
+    // Comprueba si hay una vista guardada y aplícala
+    var _savedView = localStorage.getItem('appointmentView');
+    if (_savedView) {
+      setView(_savedView);
+    }
+  }
+
+  // 2. AÑADE (O UNIFICA) ESTE "SUPER-ESCUCHA" PARA TODOS LOS CLICS
   document.addEventListener('click', /*#__PURE__*/function () {
     var _ref2 = _asyncToGenerator(/*#__PURE__*/_regenerator().m(function _callee2(event) {
-      var citaId, response, result, _t3;
+      var paginationLink, url, container, cancelButton, citaId, response, result, _t3;
       return _regenerator().w(function (_context2) {
         while (1) switch (_context2.p = _context2.n) {
           case 0:
-            if (!event.target.classList.contains('btn-cancel-appointment')) {
-              _context2.n = 7;
+            // --- Lógica para la paginación con AJAX ---
+            paginationLink = event.target.closest('.pagination a');
+            if (!paginationLink) {
+              _context2.n = 2;
               break;
             }
-            citaId = event.target.dataset.citaId;
-            if (confirm('¿Estás seguro de que quieres cancelar esta cita? Esta acción no se puede deshacer.')) {
+            // 1. Previene la recarga completa de la página
+            event.preventDefault();
+            url = paginationLink.getAttribute('href');
+            if (url) {
               _context2.n = 1;
               break;
             }
             return _context2.a(2);
           case 1:
-            _context2.p = 1;
-            _context2.n = 2;
-            return fetch("/Appointments/CancelAppointment/".concat(citaId), {
-              method: 'DELETE'
+            // El contenedor principal que vamos a actualizar
+            container = document.getElementById('my-appointments-container'); // 2. Muestra un indicador de carga para que el usuario sepa que algo está pasando
+            container.innerHTML = '<div class="text-center p-5"><div class="spinner-border" role="status"><span class="visually-hidden">Cargando...</span></div></div>';
+
+            // 3. Usa fetch para pedir solo el nuevo contenido al servidor
+            fetch(url).then(function (response) {
+              if (!response.ok) {
+                // Maneja errores si el servidor responde con un error (ej. 404, 500)
+                throw new Error("Error en la red: ".concat(response.statusText));
+              }
+              return response.text();
+            }).then(function (html) {
+              // Reemplaza el contenido viejo con el nuevo HTML que recibimos
+              container.innerHTML = html;
+
+              // Actualiza la URL en la barra del navegador sin recargar la página
+              window.history.pushState({}, '', url);
+              populateTable(window.appointmentsData);
+
+              // Vuelve a aplicar la vista de tabla/tarjetas que el usuario tenía guardada
+              var savedView = localStorage.getItem('appointmentView');
+              if (savedView) {
+                // La función setView se encargará de mostrar la vista correcta
+                // y de ajustar los botones, ya que el HTML es nuevo.
+                setView(savedView);
+              }
+            })["catch"](function (error) {
+              console.error('Error al cargar la nueva página:', error);
+              container.innerHTML = '<div class="alert alert-danger">Error al cargar la página de citas.</div>';
             });
           case 2:
-            response = _context2.v;
-            if (!response.ok) {
+            // --- Lógica para cancelar una cita ---
+            cancelButton = event.target.closest('.btn-cancel-appointment');
+            if (!cancelButton) {
+              _context2.n = 10;
+              break;
+            }
+            // 1. Prevenimos cualquier otro comportamiento por defecto del botón
+            event.preventDefault();
+
+            // 2. Obtenemos el ID de la cita desde el atributo data del botón
+            citaId = cancelButton.dataset.citaId;
+            if (citaId) {
+              _context2.n = 3;
+              break;
+            }
+            return _context2.a(2);
+          case 3:
+            if (confirm('¿Estás seguro de que quieres cancelar esta cita?')) {
               _context2.n = 4;
               break;
             }
-            _context2.n = 3;
-            return response.json();
-          case 3:
-            result = _context2.v;
-            _context2.n = 5;
-            break;
+            return _context2.a(2);
           case 4:
-            // Handle errors like 403 (Forbidden), 404 (Not Found), etc.
-            alert("Error al cancelar: ".concat(response.status, " ").concat(response.statusText));
+            _context2.p = 4;
+            _context2.n = 5;
+            return fetch("/Appointments/CancelAppointment/".concat(citaId), {
+              method: 'DELETE'
+            });
           case 5:
-            _context2.n = 7;
-            break;
+            response = _context2.v;
+            if (!response.ok) {
+              _context2.n = 7;
+              break;
+            }
+            _context2.n = 6;
+            return response.json();
           case 6:
-            _context2.p = 6;
-            _t3 = _context2.v;
-            // console.error('Error canceling appointment:', error);
-            alert('Hubo un error de conexión al intentar cancelar la cita.');
+            result = _context2.v;
+            console.log(result.message); // Opcional: muestra el mensaje de éxito en la consola
+            _context2.n = 8;
+            break;
           case 7:
+            // Maneja errores si el servidor responde con un error (ej. 403, 404)
+            alert("Error al cancelar la cita: ".concat(response.status, " ").concat(response.statusText));
+          case 8:
+            _context2.n = 10;
+            break;
+          case 9:
+            _context2.p = 9;
+            _t3 = _context2.v;
+            console.error('Error de red al cancelar la cita:', _t3);
+            alert('Hubo un error de conexión al intentar cancelar la cita.');
+          case 10:
             return _context2.a(2);
         }
-      }, _callee2, null, [[1, 6]]);
+      }, _callee2, null, [[4, 9]]);
     }));
     return function (_x2) {
       return _ref2.apply(this, arguments);
